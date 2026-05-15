@@ -404,20 +404,6 @@ export function deactivate(): Thenable<any> | undefined {
 
 ### 6. The server (`packages/language-server`)
 
-`packages/language-server/bin/happy-language-server.js` — the CLI entry for clients that spawn LSPs by **executing a binary over stdio** (Neovim, Zed, Helix, etc.). Installing the package puts `happy-language-server` on `$PATH`; the shim then `require()`s the bundled server.
-
-VS Code does **not** go through this shim, on purpose. `vscode-languageclient` with `TransportKind.ipc` uses `child_process.fork()` + Node IPC — message-passing via structured cloning, no per-message JSON-RPC serialisation. That's faster than stdio and avoids depending on the binary being on the user's PATH. Same compiled server, two entry points for two audiences.
-
-```js
-#!/usr/bin/env node
-if (process.argv.includes("--version")) {
-  const pkgJSON = require("../package.json");
-  console.log(pkgJSON.version);
-} else {
-  require("../dist/happy-server.js");
-}
-```
-
 `packages/language-server/package.json`:
 
 ```json
@@ -630,19 +616,33 @@ That's the entire Volar boundary. **`(source: string) → AST` with positioned n
 - **Custom diagnostics.** Register a service alongside the others — see
   `volarjs/starter`'s `index.ts` "only one `<style>` tag" example as a template.
 
-### Cross-editor
+### Cross-editor — the `bin` shim
 
-The same `dist/happy-server.js` runs under Zed, Neovim, Helix, etc. —
-LSP is editor-agnostic. The wrapper differs per editor:
+The same `dist/happy-server.js` runs under Neovim, Zed, Helix, etc.
+LSP is editor-agnostic. The launcher differs per editor:
 
-| Editor   | Wrapper                              | Transport                |
-|----------|--------------------------------------|--------------------------|
-| VS Code  | `packages/vscode` (this repo)        | `TransportKind.ipc`      |
-| Neovim   | `nvim-lspconfig` or `vim.lsp.start`  | stdio                    |
+| Editor  | Wrapper                              | Transport                |
+|---------|--------------------------------------|--------------------------|
+| VS Code | `packages/vscode` (this repo)        | `TransportKind.ipc`      |
+| Neovim  | `nvim-lspconfig` or `vim.lsp.start`  | stdio                    |
 | Zed     | Rust→WASM extension                  | stdio (server binary)    |
-| Helix    | `languages.toml`                     | stdio                    |
+| Helix   | `languages.toml`                     | stdio                    |
 
-The `bin/happy-language-server.js` shim is what those wrappers invoke.
+VS Code spawns `dist/happy-server.js` directly via `child_process.fork()` + Node IPC (`TransportKind.ipc`) — message-passing via structured cloning, no per-message JSON-RPC serialisation. Faster than stdio, no PATH dependency. This is the right path for any in-tree VS Code extension.
+
+The other editors don't have a way to in-process spawn a JS file; they expect a **command** on `$PATH` and talk to it over stdio. That's what `packages/language-server/bin/happy-language-server.js` is for. Installing the language-server package via `npm`/`pnpm` puts `happy-language-server` on PATH, and the shim `require()`s the same bundled server:
+
+```js
+#!/usr/bin/env node
+if (process.argv.includes("--version")) {
+  const pkgJSON = require("../package.json");
+  console.log(pkgJSON.version);
+} else {
+  require("../dist/happy-server.js");
+}
+```
+
+The `"bin"` field in `packages/language-server/package.json` is what wires this up. Same compiled server, two entry points for two audiences — that's the cross-editor story.
 
 ---
 
