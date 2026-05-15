@@ -16,6 +16,7 @@ const nodeBuiltins = [
 // siblings so the bundler can inline them. Same trick as volarjs/starter.
 const umd2esm = {
   name: "umd2esm",
+  enforce: "pre" as const,
   resolveId(source: string, importer: string | undefined) {
     if (/^(vscode-.*-languageservice|jsonc-parser)/.test(source)) {
       const fromDir = importer ? dirname(importer) : here
