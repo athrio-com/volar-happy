@@ -303,7 +303,7 @@ Create `packages/vscode/package.json`:
 }
 ```
 
-**`[+]`** — `@volar-happy/language-server` must be declared as `"workspace:*"`. pnpm uses this to create the symlink at `packages/vscode/node_modules/@volar-happy/language-server/`. The extension code below spawns the server through that symlinked path; the spawn fails with `Cannot find module …` if the dependency isn't declared.
+**`[+]`** — `@volar-happy/language-server` must be declared as `"workspace:*"`.
 
 Create [`packages/vscode/src/vscode-extension.ts`](./packages/vscode/src/vscode-extension.ts). Notice:
 
@@ -329,7 +329,7 @@ const serverOptions: lsp.ServerOptions = {
 
 The rest of `activate()` is conventional LSP wiring: build `clientOptions` with `documentSelector: [{ language: "happy" }]`, construct `lsp.LanguageClient`, `await client.start()`, register `activateAutoInsertion("happy", client)`, and return a `createLabsInfo(serverProtocol)` handle for the optional Volar Labs inspector.
 
-**`[+]`** Create `packages/vscode/language-configuration.json` — VS-Code-side metadata only (brackets, comments, auto-pairs). No LSP involved; the editor reads it directly. The guide skips this; it's an easy ergonomic win:
+**`[+]`** Create `packages/vscode/language-configuration.json` — VS-Code-side metadata (brackets, comments, auto-pairs). No LSP involved; the editor reads it directly.
 
 ```json
 {
@@ -388,13 +388,13 @@ connection.onInitialize((params) => {
 // …
 ```
 
-**`[+]`** — the plugin must be **actually registered** in `createSimpleProject([happyLanguagePlugin])`. The guide's snippet passes an empty array, so opening a `.happy` file produces no logs and no virtual code construction — the LSP server runs but is inert.
+**`[+]`** — the plugin is **actually registered** in `createSimpleProject([happyLanguagePlugin])`.
 
 ### 7. Server configuration — bundling with Vite
 
-**`[+]`** The official guide and `volarjs/starter` use esbuild via a hand-written build script; Happy Path uses Vite library mode for both packages. Same outcome (one CJS bundle per package), fewer moving parts.
+**`[+]`** The official guide and `volarjs/starter` use esbuild build script; Happy Path uses Vite library mode for both packages.
 
-Create [`packages/language-server/vite.config.ts`](./packages/language-server/vite.config.ts) and [`packages/vscode/vite.config.ts`](./packages/vscode/vite.config.ts). They share the similar shape — only the entry path, output filename, and the client's extra `"vscode"` external differ. Notice:
+Create [`packages/language-server/vite.config.ts`](./packages/language-server/vite.config.ts) and [`packages/vscode/vite.config.ts`](./packages/vscode/vite.config.ts). Notice:
 
 ```ts
 // packages/language-server/vite.config.ts — excerpt
@@ -453,29 +453,14 @@ export class HappyVirtualCode implements VirtualCode {
   private onSnapshotUpdated() {
     // Identity mapping over the whole document — downstream services need
     // it to see source coordinates. Your future parser plugs in here too.
-    this.mappings = [/* { sourceOffsets: [0], generatedOffsets: [0], lengths: [doc length], data: { … } } */];
+    this.mappings = // ...
   }
 }
 ```
 
-**`[+]`** — `mappings: CodeMapping[] = []` is **required** by the `VirtualCode` interface. The guide's `Html1Code` snippet declares `id`, `languageId`, `embeddedCodes`, and `snapshot` but omits `mappings`, so `implements VirtualCode` won't compile.
+**`[+]`** — `mappings: CodeMapping[] = []` is **required** by the `VirtualCode` interface.
 
-**`[+]`** — `update()` is the **mutation-on-update** pattern from the Volar 2.x `LanguagePlugin` API: Volar reuses the same `VirtualCode` identity across edits, and downstream caches keyed on it stay valid. The guide's older snippet creates a fresh class each edit.
-
-The six `data` flags control which LSP features Volar routes through this mapping:
-
-- `completion` — IntelliSense
-- `format` — formatting edits
-- `navigation` — go-to-def / references
-- `semantic` — semantic tokens, type info
-- `structure` — outline, folding
-- `verification` — diagnostics
-
-All-true is the default for "treat this region as full-featured."
-
-That's the entire Volar boundary. **`(source: string) → AST` with positioned nodes is everything your future parser owes Volar.** Everything else — line splitting, tokenisation, AST shapes — is internal implementation behind that function.
-
----
+**`[+]`** — `update()` is the **mutation-on-update** pattern from the Volar 2.x `LanguagePlugin` API.
 
 ## Cross-editor — the `bin` shim
 
