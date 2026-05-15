@@ -105,20 +105,16 @@ volar-happy/
 - VS Code ↔ extension: in-process calls via the VS Code extension API.
 - Extension ↔ server: LSP messages (JSON-RPC) over IPC.
 
-Everything Volar-related — your plugin, your future parser, your future services — runs in the **server**. The extension is just a thin spawner that hands work off over LSP.
+Everything Volar-related — happy plugin, happy future parser, happy future services — runs in the **server**. The extension is just a thin spawner that hands work off over LSP.
 
 The flow when you open a `.happy` file:
 
-1. VS Code fires `onLanguage:happy` → activates the extension.
-2. Extension calls `client.start()` → spawns `node dist/happy-server.js` with an IPC channel.
-3. Client and server exchange LSP `initialize` / `initialized`.
-4. VS Code sends `textDocument/didOpen { uri, text }`.
-5. Volar stores `text` as a snapshot. Then it calls:
-   - `happyLanguagePlugin.getLanguageId(uri)` → `'happy'`
-   - `happyLanguagePlugin.createVirtualCode(uri, 'happy', snapshot)` ← **your parser runs here**
-6. Volar caches the returned `VirtualCode`. Nothing else happens until VS Code asks (hover, completion, diagnostics, …) or the document changes.
-
-On change: `textDocument/didChange` → Volar calls `updateVirtualCode(uri, code, newSnapshot)` → your `code.update(newSnapshot)` runs again with the full new text.
+1. VS Code activates the extension on `onLanguage:happy`.
+2. The extension spawns the server — `node dist/happy-server.js`, IPC transport.
+3. When you open a `.happy` file, Volar wraps the text in a snapshot and calls your plugin:
+   - `getLanguageId(uri)` → `'happy'`
+   - `createVirtualCode(uri, 'happy', snapshot)` ← **your parser runs here**
+4. Volar caches the returned `VirtualCode`. After that, it only re-enters your code on document changes (`updateVirtualCode`) or when an editor feature is requested (hover, completion, …).
 
 ---
 
