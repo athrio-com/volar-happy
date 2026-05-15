@@ -1,20 +1,13 @@
 # Volar Happy Path
 
-> A minimal, **working** Volar.js language extension scaffold.
-> Press <kbd>F5</kbd>, open a `.happy` file, see activation logs. That's it.
->
-> _Last verified: Volar `2.4.28`, Node 24 LTS, pnpm 11, vscode-languageclient 9 — 2026-05-15._
+🥬 **Volar Happy Path** — a minimal **working** Volar.js language extension scaffold distilled from real-world work.
 
-> 🥬 **Happy Path** — distilled from real-world work.
->
-> 🐌 If it saved you a weekend, consider supporting our education organisation
-> **Quadrivium Academy**: **[ko-fi.com/quadrivium](https://ko-fi.com/quadrivium)**. Thank you. 🙏
+🐌 If it saved you a weekend, consider supporting our education organisation
+**Quadrivium Academy**: **[ko-fi.com/quadrivium](https://ko-fi.com/quadrivium)**. Thank you.
 
 This repository is a complement to the official Volar guide,
 [**Your First Volar Language Server**](https://volarjs.dev/guides/first-server/),
-which is marked _"work in progress"_ and stops mid-implementation
-in the `languagePlugin.ts` section. The Happy Path picks up where that guide
-leaves off and gives you a **runnable starter** with the gaps filled in:
+which is marked _"work in progress"_ and stops mid-implementation. The Happy Path gives you a **runnable starter** with the gaps filled in:
 
 - pnpm 11 workspace
 - Vite library mode for both packages
@@ -24,13 +17,7 @@ leaves off and gives you a **runnable starter** with the gaps filled in:
 - Diagnostic `console.log` at every plugin entry point
 
 The project's only language semantics are: _"a file ending in `.happy` exists."_
-Nothing is parsed. The point is the **plumbing**.
-
-**Out of scope**: publishing.
-
-MIT licensed. Fork freely.
-
----
+Nothing is parsed. Publishing is **out of scope**. MIT licensed. Fork freely.
 
 ## Quick start
 
@@ -91,14 +78,9 @@ volar-happy/
 └── tsconfig.json                       Root — for editor IntelliSense across the workspace
 ```
 
-## 📖 Step-by-step (full mirror of the official guide)
+## 📖 Step-by-step guide
 
-Each section below mirrors a section of the
-[**official guide**](https://volarjs.dev/guides/first-server/) — same
-order, same headings — but each is self-contained: you can build the
-project by reading only this README. Snippets are adapted to
-`.happy` / `happy` / `Happy`. Inline annotations mark where Happy Path
-diverges from the guide and why:
+Sections below shadow the official Volar [**Getting started guide**](https://volarjs.dev/guides/first-server/) — same numbering, same headings — and override only where Happy Path diverges. Read the two alongside: Happy Path is commentary on the guide, not a self-contained replacement for it. Anything the guide already covers correctly is not repeated here.
 
 **`[+]`** marks a point where Happy Path diverges from the guide — either by adding what the guide skips or by correcting something that doesn't work as written.
 
@@ -138,13 +120,9 @@ Create the root `package.json`:
 }
 ```
 
-Root devDependencies are the build tools and types every package shares:
+Root devDependencies are the build tools and types every package shares.
 
-- `typescript` — root `tsc` command and editor language service across the workspace.
-- `@types/node` — needed by the root `tsconfig.json`'s `"types": ["node"]` so the editor resolves Node globals.
-- `vite` — `pnpm -r build` invokes each package's `vite build` script; vite needs to be on the PATH that pnpm's script runner extends. Keeping it at the root means a single version pinned across both packages.
-
-Create `pnpm-workspace.yaml`:
+**`[+]`** Create `pnpm-workspace.yaml`:
 
 ```yaml
 packages:
@@ -155,11 +133,9 @@ allowBuilds:                      # [+] pnpm 11 requires explicit approval for n
   msgpackr-extract: true
 ```
 
-**`[+]`** — pnpm reads `pnpm-workspace.yaml`, **not** the `workspaces` field in `package.json` (that's a Bun/Yarn convention pnpm silently ignores).
+**`[+]`** — without `allowBuilds`, pnpm 11 prints `Ignored build scripts: @parcel/watcher, esbuild, msgpackr-extract` and those packages don't fully install.
 
-**`[+]`** — without `allowBuilds`, pnpm 11 prints `Ignored build scripts: @parcel/watcher, esbuild, msgpackr-extract` and those packages don't fully install. Native modules used by Vite & co. will then fail at build or run time.
-
-Create a stub `package.json` in each sub-package so pnpm registers them as workspaces. Filled in fully in sections 5 and 6:
+Create a stub `package.json` in each sub-package so pnpm registers them as workspaces:
 
 `packages/language-server/package.json`:
 
@@ -195,15 +171,13 @@ pnpm --filter @volar-happy/vscode add \
 pnpm --filter @volar-happy/vscode add -D @types/vscode         # [+] devDependency, not dependency
 ```
 
-**`[+]`** — `vscode-uri` is a **devDependency** of `language-server`. Volar's published TypeScript types reference `URI` from it, so the compiler needs it; but at runtime VS Code's host provides URIs, the bundle never constructs them, and shipping it as a runtime dep is pure cost.
+**`[+]`** — `vscode-uri` is a **devDependency** of `language-server`. Volar's published TypeScript types reference `URI` from it, so the compiler needs it; but at runtime VS Code's host provides URIs, the bundle never constructs them, and shipping it as a runtime dep is not needed.
 
 **`[+]`** — `@types/vscode` is a **devDependency** of `vscode`. Types are erased at build time and don't ship to users.
 
 The `pnpm --filter @volar-happy/vscode add @volar-happy/language-server` step records `"workspace:*"` in the client's `package.json` and creates the symlink at `packages/vscode/node_modules/@volar-happy/language-server/`. That symlink is what the extension uses at runtime to spawn the server.
 
 ### 3. Installing and configuring TypeScript
-
-`typescript` is already in the root `devDependencies` from section 2 — one TS version shared across the workspace. Add the configs.
 
 Create `tsconfig.base.json` at the repo root:
 
@@ -224,7 +198,7 @@ Create `tsconfig.base.json` at the repo root:
 }
 ```
 
-**`[+]`** — the guide's base is just `{ "module": "nodenext" }`. That inherits TypeScript's silent defaults: `target: ES5`, `strict: false`, no declarations, no sourcemaps. The base above is what `volarjs/starter` uses and what you actually want for a server you'll iterate on.
+**`[+]`** — this base pins `target: ES2021` + `lib: ES2021` for modern emit and lib types, `strict` for real type-checking, `skipLibCheck` so `node_modules` aren't re-checked on every build, `declaration` + `sourceMap` so consumers and debuggers see types and original source positions, `composite` so workspace project references work, and the two `noUnused*` flags so iteration catches dead code early. The guide's base is just `{ "module": "nodenext" }`, which inherits TypeScript's silent defaults (`target: ES5`, `strict: false`, no declarations, no sourcemaps) — fine as a teaching minimum, not what you want for a server you'll iterate on.
 
 In each sub-package, create a `tsconfig.json`:
 
