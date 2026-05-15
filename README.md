@@ -643,31 +643,7 @@ That's the entire Volar boundary. **`(source: string) → AST` with positioned n
 
 ### Cross-editor — the `bin` shim
 
-The same `dist/happy-server.js` runs under Neovim, Zed, Helix, etc.
-LSP is editor-agnostic. The launcher differs per editor:
-
-| Editor  | Wrapper                              | Transport                |
-|---------|--------------------------------------|--------------------------|
-| VS Code | `packages/vscode` (this repo)        | `TransportKind.ipc`      |
-| Neovim  | `nvim-lspconfig` or `vim.lsp.start`  | stdio                    |
-| Zed     | Rust→WASM extension                  | stdio (server binary)    |
-| Helix   | `languages.toml`                     | stdio                    |
-
-VS Code spawns `dist/happy-server.js` directly via `child_process.fork()` + Node IPC (`TransportKind.ipc`) — message-passing via structured cloning, no per-message JSON-RPC serialisation. Faster than stdio, no PATH dependency. This is the right path for any in-tree VS Code extension.
-
-The other editors don't have a way to in-process spawn a JS file; they expect a **command** on `$PATH` and talk to it over stdio. That's what `packages/language-server/bin/happy-language-server.js` is for. Installing the language-server package via `npm`/`pnpm` puts `happy-language-server` on PATH, and the shim `require()`s the same bundled server:
-
-```js
-#!/usr/bin/env node
-if (process.argv.includes("--version")) {
-  const pkgJSON = require("../package.json");
-  console.log(pkgJSON.version);
-} else {
-  require("../dist/happy-server.js");
-}
-```
-
-The `"bin"` field in `packages/language-server/package.json` is what wires this up. Same compiled server, two entry points for two audiences — that's the cross-editor story.
+The same `dist/happy-server.js` runs under any LSP-aware editor. VS Code uses `TransportKind.ipc` (in-tree, faster); Neovim, Zed, Helix and friends launch the server as a binary on `$PATH` — `packages/language-server/bin/happy-language-server.js` (wired via the `"bin"` field) is the entry point for that path. Same compiled server, two entry points.
 
 ---
 
