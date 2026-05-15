@@ -187,7 +187,27 @@ allowBuilds:                      # [fix] pnpm 11 requires explicit approval for
 
 **`[fix]`** — without `allowBuilds`, pnpm 11 prints `Ignored build scripts: @parcel/watcher, esbuild, msgpackr-extract` and those packages don't fully install. Native modules used by Vite & co. will then fail at build or run time.
 
-Install runtime dependencies, scoped per package:
+Stub `package.json` for each sub-package so pnpm can register them as workspaces. These get filled in fully in sections 5 and 6 — at this stage they just need a name pnpm can resolve with `--filter`:
+
+`packages/language-server/package.json`:
+
+```json
+{ "name": "@volar-happy/language-server", "version": "0.1.0" }
+```
+
+`packages/vscode/package.json`:
+
+```json
+{ "name": "@volar-happy/vscode", "version": "0.1.0" }
+```
+
+Now register the workspace and install the root devDependencies:
+
+```sh
+pnpm install
+```
+
+Install runtime dependencies into each sub-package:
 
 ```sh
 # language-server
@@ -207,19 +227,11 @@ pnpm --filter @volar-happy/vscode add -D @types/vscode         # [fix] devDepend
 
 **`[fix]`** — `@types/vscode` is a **devDependency** of `vscode`. Types are erased at build time and don't ship to users.
 
-Finally, at the root:
-
-```sh
-pnpm install
-```
-
-This materialises the workspace symlinks, which the extension relies on at runtime to spawn the server.
+The `pnpm --filter @volar-happy/vscode add @volar-happy/language-server` step records `"workspace:*"` in the client's `package.json` and creates the symlink at `packages/vscode/node_modules/@volar-happy/language-server/`. That symlink is what the extension uses at runtime to spawn the server.
 
 ### 3. Installing and configuring TypeScript
 
-```sh
-pnpm add -Dw typescript
-```
+`typescript` is already in the root `devDependencies` from section 2 — one TS version shared across the workspace. All you need to add here is the configs.
 
 `tsconfig.base.json` at repo root:
 
