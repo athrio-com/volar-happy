@@ -1,15 +1,9 @@
 import * as serverProtocol from "@volar/language-server/protocol";
 import { activateAutoInsertion, createLabsInfo } from "@volar/vscode";
 import * as vscode from "vscode";
-import {
-  type BaseLanguageClient,
-  LanguageClient,
-  type LanguageClientOptions,
-  type ServerOptions,
-  TransportKind,
-} from "vscode-languageclient/node";
+import * as lsp from "vscode-languageclient/node";
 
-let client: BaseLanguageClient;
+let client: lsp.BaseLanguageClient;
 
 export async function activate(context: vscode.ExtensionContext) {
   const serverModule = vscode.Uri.joinPath(
@@ -20,25 +14,25 @@ export async function activate(context: vscode.ExtensionContext) {
     "dist",
     "happy-server.js",
   );
-  const serverOptions: ServerOptions = {
+  const serverOptions: lsp.ServerOptions = {
     run: {
       module: serverModule.fsPath,
-      transport: TransportKind.ipc,
+      transport: lsp.TransportKind.ipc,
       options: { execArgv: [] as string[] },
     },
     debug: {
       module: serverModule.fsPath,
-      transport: TransportKind.ipc,
+      transport: lsp.TransportKind.ipc,
       options: { execArgv: ["--nolazy", "--inspect=6009"] },
     },
   };
 
-  const clientOptions: LanguageClientOptions = {
+  const clientOptions: lsp.LanguageClientOptions = {
     documentSelector: [{ language: "happy" }],
     initializationOptions: {},
   };
 
-  client = new LanguageClient(
+  client = new lsp.LanguageClient(
     "happy-language-server",
     "Happy Language Server",
     serverOptions,
