@@ -227,7 +227,7 @@ pnpm add -Dw typescript
 }
 ```
 
-**`[fix]`** — the guide's base is just `{ "module": "nodenext" }`. That inherits TypeScript's silent defaults: `target: ES5`, `strict: false`, no declarations, no sourcemaps. The base above is what `volarjs/starter` uses and what you actually want for a server you'll iterate on.
+**`[+]`** — the guide's base is just `{ "module": "nodenext" }`. That inherits TypeScript's silent defaults: `target: ES5`, `strict: false`, no declarations, no sourcemaps. The base above is what `volarjs/starter` uses and what you actually want for a server you'll iterate on.
 
 Each package's own `tsconfig.json`:
 
@@ -297,7 +297,7 @@ Each package's own `tsconfig.json`:
 }
 ```
 
-**`[+]`** — `reveal: "always"` opens the terminal panel on every F5 so build output is visible. With `reveal: "silent"` (the more common default in starter snippets) you can't see whether Vite ran, what it produced, or whether it failed — and `problemMatcher: []` means VS Code won't pop a dialog either. For a starter where the whole point is making the pipeline visible, `always` is the safer choice.
+**`[+]`** — `reveal: "always"` opens the terminal panel on every F5 so build output is visible.
 
 ### 5. The client (`packages/vscode`)
 
@@ -342,15 +342,9 @@ Each package's own `tsconfig.json`:
 import * as serverProtocol from "@volar/language-server/protocol";
 import { activateAutoInsertion, createLabsInfo } from "@volar/vscode";
 import * as vscode from "vscode";
-import {
-  type BaseLanguageClient,
-  LanguageClient,
-  type LanguageClientOptions,
-  type ServerOptions,
-  TransportKind,
-} from "vscode-languageclient/node";
+import * as lsp from "vscode-languageclient/node";
 
-let client: BaseLanguageClient;
+let client: lsp.BaseLanguageClient;
 
 export async function activate(context: vscode.ExtensionContext) {
   const serverModule = vscode.Uri.joinPath(
@@ -358,23 +352,23 @@ export async function activate(context: vscode.ExtensionContext) {
     "node_modules", "@volar-happy", "language-server",
     "dist", "happy-server.js",
   );
-  const serverOptions: ServerOptions = {
+  const serverOptions: lsp.ServerOptions = {
     run: {
       module: serverModule.fsPath,
-      transport: TransportKind.ipc,
+      transport: lsp.TransportKind.ipc,
       options: { execArgv: [] as string[] },
     },
     debug: {
       module: serverModule.fsPath,
-      transport: TransportKind.ipc,
+      transport: lsp.TransportKind.ipc,
       options: { execArgv: ["--nolazy", "--inspect=6009"] },
     },
   };
-  const clientOptions: LanguageClientOptions = {
+  const clientOptions: lsp.LanguageClientOptions = {
     documentSelector: [{ language: "happy" }],
     initializationOptions: {},
   };
-  client = new LanguageClient(
+  client = new lsp.LanguageClient(
     "happy-language-server",
     "Happy Language Server",
     serverOptions,
@@ -391,10 +385,6 @@ export function deactivate(): Thenable<any> | undefined {
   return client?.stop();
 }
 ```
-
-**`[fix]`** — **named imports** from `vscode-languageclient/node`, not `import * as lsp`. Some bundler + CJS interop combinations leave the namespace empty, so `TransportKind` arrives as `undefined` and activation fails with `Cannot read properties of undefined (reading 'ipc')`.
-
-**`[fix]`** — `execArgv: [] as string[]`, not `<string[]>[]`. Node's built-in TypeScript type-stripping (Node 22+) rejects angle-bracket cast syntax. Even when bundled, the `as` form is safer.
 
 **`[+]`** `packages/vscode/language-configuration.json` — pure VS-Code-side metadata (brackets, comments, auto-pairs). No LSP involved; the editor reads it directly. The official guide doesn't cover this; it's an easy ergonomic win.
 
