@@ -83,24 +83,29 @@ volar-happy/
 │   │   └── vite.config.ts              Library bundle → dist/happy-server.js (CJS, Node target)
 │   └── vscode/                         VS Code extension (the "client")
 │       ├── src/vscode-extension.ts     Spawns the server, attaches LanguageClient
-│       ├── language-configuration.json VS Code-only: brackets, comments, auto-closing pairs (no LSP involved)
+│       ├── language-configuration.json VS Code level brackets, comments, auto-closing pairs (no LSP involved)
 │       └── vite.config.ts              Library bundle → dist/vscode-extension.js
 ├── samples/hello.happy                 Demo file to open in the Extension Development Host
 ├── .vscode/
 │   ├── launch.json                     "Run Happy Extension" (F5) + "Attach to Happy Server"
-│   └── tasks.json                      build / watch tasks, invoked by F5's preLaunchTask
+│   └── tasks.json                      VSC build task, invoked by F5's preLaunchTask
 ├── pnpm-workspace.yaml
 ├── tsconfig.base.json                  Strict TS, NodeNext modules, declarations + sourcemaps
 └── tsconfig.json                       Root — for editor IntelliSense across the workspace
 ```
 
-**Three processes, two boundaries.** VS Code is one process; the extension
-(the "client", `packages/vscode`) runs inside its extension host. The
-language server (`packages/language-server`) is a separate Node subprocess
-that the extension spawns. Communication: VS Code ↔ extension via in-process
-API; extension ↔ server via LSP JSON-RPC over IPC. Everything Volar does —
-your plugin, your future parser, future services — runs inside the server
-subprocess.
+**Three processes:**
+
+1. **VS Code** — the editor.
+2. **The extension** (`packages/vscode`) — lives _inside_ VS Code's extension host.
+3. **The language server** (`packages/language-server`) — a separate Node subprocess that the extension spawns on first `.happy` open.
+
+**Two boundaries:**
+
+- VS Code ↔ extension: in-process calls via the VS Code extension API.
+- Extension ↔ server: LSP messages (JSON-RPC) over IPC.
+
+Everything Volar-related — your plugin, your future parser, your future services — runs in the **server**. The extension is just a thin spawner that hands work off over LSP.
 
 The flow when you open a `.happy` file:
 
