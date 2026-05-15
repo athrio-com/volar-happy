@@ -464,7 +464,7 @@ export class HappyVirtualCode implements VirtualCode {
 
 ## Cross-editor — the `bin` shim
 
-The same `dist/happy-server.js` runs under any LSP-aware editor. VS Code uses `TransportKind.ipc` (in-tree, faster); Neovim, Zed, Helix and friends launch the server as a binary on `$PATH` — `packages/language-server/bin/happy-language-server.js` (wired via the `"bin"` field) is the entry point for that path. Same compiled server, two entry points.
+VS Code spawns `dist/happy-server.js` directly via Node IPC — fast, in-tree, no `$PATH` lookup. The `bin` shim at `packages/language-server/bin/happy-language-server.js` exists so other LSP-aware editors (Neovim, Zed, Helix) can launch the same compiled server as a binary on `$PATH`.
 
 ---
 
