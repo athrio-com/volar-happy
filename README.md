@@ -1,6 +1,6 @@
-# Volar Happy Path
+# 🥬 Volar Happy Path
 
-🥬 **Volar Happy Path** is a minimal, working Volar.js language extension scaffold, distilled from real-world work. The point isn't the language itself; it's the plumbing that makes any language plug into Volar with VS Code client.
+**Volar Happy Path** is a minimal, working Volar.js language extension scaffold, distilled from real-world work. The point isn't the language itself; it's the plumbing that makes any language plug into Volar with VS Code client.
 
 🐌 If it saved you a weekend, consider supporting our education organisation **Quadrivium Academy** on Ko-fi: **[ko-fi.com/quadrivium](https://ko-fi.com/quadrivium)**. Thank you.
 
