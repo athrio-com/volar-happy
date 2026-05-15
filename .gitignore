@@ -1,0 +1,30 @@
+# macOS
+.DS_Store
+
+# Editors — keep .vscode/launch.json and tasks.json so F5 works out of the box.
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+*.swp
+*.swo
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Node / pnpm
+node_modules/
+dist/
+build/
+out/
+.cache/
+coverage/
+
+# Packed tarballs
+*.tgz

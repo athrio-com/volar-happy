@@ -1,0 +1,23 @@
+{
+  "name": "@volar-happy/language-server",
+  "version": "0.1.0",
+  "main": "./dist/happy-server.js",
+  "bin": {
+    "happy-language-server": "./bin/happy-language-server.js"
+  },
+  "scripts": {
+    "build": "vite build",
+    "watch": "vite build --watch"
+  },
+  "dependencies": {
+    "@volar/language-core": "^2.4.28",
+    "@volar/language-server": "^2.4.28",
+    "@volar/language-service": "^2.4.28",
+    "volar-service-css": "^0.0.71",
+    "volar-service-html": "^0.0.71",
+    "vscode-html-languageservice": "^5.6.2"
+  },
+  "devDependencies": {
+    "vscode-uri": "^3.1.0"
+  }
+}

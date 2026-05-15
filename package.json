@@ -1,0 +1,22 @@
+{
+  "name": "volar-happy",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "packageManager": "pnpm@11.1.2",
+  "engines": {
+    "node": ">=24",
+    "pnpm": ">=11"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "watch": "pnpm -r --parallel watch"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "@volar/language-core": "^2.4.28",
+    "@volar/language-server": "^2.4.28",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.12"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Happy Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--disable-updates",
+        "--disable-workspace-trust",
+        "--profile-temp",
+        "--skip-release-notes",
+        "--skip-welcome",
+        "--extensionDevelopmentPath=${workspaceFolder}/packages/vscode",
+        "${workspaceFolder}/samples"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/packages/vscode/dist/*.js",
+        "${workspaceFolder}/packages/language-server/dist/*.js"
+      ],
+      "preLaunchTask": "build"
+    },
+    {
+      "name": "Attach to Happy Server",
+      "type": "node",
+      "request": "attach",
+      "port": 6009,
+      "restart": true,
+      "outFiles": [
+        "${workspaceFolder}/packages/language-server/dist/*.js"
+      ]
+    }
+  ]
+}

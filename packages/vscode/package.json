@@ -1,0 +1,38 @@
+{
+  "name": "@volar-happy/vscode",
+  "publisher": "athrio",
+  "displayName": "Volar Happy Path",
+  "description": "Reference Volar.js language extension — minimal stub for the .happy language.",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.55.0"
+  },
+  "activationEvents": [
+    "onLanguage:happy"
+  ],
+  "main": "./dist/vscode-extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "happy",
+        "extensions": [
+          ".happy"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "vite build",
+    "watch": "vite build --watch"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.120.0"
+  },
+  "dependencies": {
+    "@volar-happy/language-server": "workspace:*",
+    "@volar/language-server": "^2.4.28",
+    "@volar/vscode": "^2.4.28",
+    "vscode-languageclient": "^9.0.1"
+  }
+}

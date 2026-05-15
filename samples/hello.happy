@@ -1,0 +1,7 @@
+# Hello, Happy!
+
+This is a sample .happy file. Opening it in the Extension Development
+Host should produce a [Happy] activation trace in the
+"Happy Language Server" output channel.
+
+Edit me to see updateVirtualCode fire on every keystroke.
