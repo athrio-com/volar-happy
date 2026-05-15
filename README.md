@@ -7,9 +7,7 @@
 
 This repository is a complete, runnable guide to building a Volar.js-based VS Code language extension end-to-end — from an empty directory to an installable `.vsix`. It shadows the official [**Your First Volar Language Server**](https://volarjs.dev/guides/first-server/) guide and parallels [`volarjs/starter`](https://github.com/volarjs/starter), but uses the current toolchain (pnpm 11, Vite, Volar 2.4.28) and emphasises a console-traceable activation loop. Read the official guide and the starter alongside; Happy Path fills the gaps between them.
 
-The language we'll implement is called **Happy**. It has no semantics — a file ending in `.happy` exists, nothing is parsed. The point is the **plumbing**.
-
-> _Last verified: Volar `2.4.28`, Node 24 LTS, pnpm 11, vscode-languageclient 9 — 2026-05-15._
+The language we'll implement is called **Happy** — a stub. The plugin activates on `.happy` files and traces every Volar entry point to the Output panel, but parses nothing. The point is the **plumbing**.
 
 ## Why this exists
 
