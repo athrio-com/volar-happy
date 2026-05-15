@@ -78,7 +78,7 @@ export class HappyVirtualCode implements VirtualCode {
     }];
 
     console.log("[Happy]   onSnapshotUpdated: text length =", text.length);
-    console.log("[Happy]   first 200 chars:", JSON.stringify(text.slice(0, 200)));
+    console.log("[Happy]   first 1000 chars:", JSON.stringify(text.slice(0, 1000)));
 
     // Real work goes here once activation is confirmed:
     //   const ast = parseHappy(text)

@@ -1,29 +1,30 @@
 # Volar Happy Path
 
-🥬 **Volar Happy Path** — a minimal **working** Volar.js language extension scaffold distilled from real-world work.
+🥬 **Volar Happy Path** is a minimal, working Volar.js language extension scaffold, distilled from real-world work. The point isn't the language itself; it's the plumbing that makes any language plug into Volar with VS Code client.
 
-🐌 If it saved you a weekend, consider supporting our education organisation
-**Quadrivium Academy**: **[ko-fi.com/quadrivium](https://ko-fi.com/quadrivium)**. Thank you.
-
-This repository is a complete, runnable guide to building a Volar.js-based VS Code language extension end-to-end — from an empty directory to an installable `.vsix`. It shadows the official [**Your First Volar Language Server**](https://volarjs.dev/guides/first-server/) guide and parallels [`volarjs/starter`](https://github.com/volarjs/starter), but uses the current toolchain (pnpm 11, Vite, Volar 2.4.28) and emphasises a console-traceable activation loop. Read the official guide and the starter alongside; Happy Path fills the gaps between them.
-
-The language we'll implement is called **Happy** — a stub. The plugin activates on `.happy` files and traces every Volar entry point to the Output panel, but parses nothing. The point is the **plumbing**.
+🐌 If it saved you a weekend, consider supporting our education organisation **Quadrivium Academy** on Ko-fi: **[ko-fi.com/quadrivium](https://ko-fi.com/quadrivium)**. Thank you.
 
 ## Why this exists
 
-The official guide is marked _"work in progress"_ and stops mid-implementation. The `volarjs/starter` is a complete working artifact from the Volar team, last touched September 2024, pins `pnpm@9.1.0`, and builds with a hand-written esbuild script. Happy Path occupies the gap between the two:
+This repository walks you, end to end, from an empty directory to an installable `.vsix`. It shadows the official [**Your First Volar Language Server**](https://volarjs.dev/guides/first-server/) guide and runs in parallel with [`volarjs/starter`](https://github.com/volarjs/starter) — but uses the current toolchain (pnpm 11, Vite, Volar 2.4.28) and emphasises a console-traceable activation loop. Read the official guide and the starter alongside this one; Happy Path is what fills the gaps between them.
 
-- **Current toolchain** — pnpm 11 workspace, Vite library mode for bundling, recent Volar.
-- **Visible lifecycle** — `console.log` at every plugin entry point so you can _see_ activation in VS Code's Output panel before reaching for a debugger.
-- **Full lifecycle covered** — init → dev loop → `.vsix` pack. The same surface as the starter, just current.
+The language we'll implement is called **Happy** — and it's a stub. The extension activates on `.happy` files and traces every Volar entry point to the Output panel, but it parses nothing. Once the trace lights up, your own language slots in where the parsing should go.
 
-The starter's `.html1` example also covers embedded HTML/CSS to demonstrate Volar's embedded-language story. Happy Path leaves that exercise to the reader; the focus here is getting the plumbing live so your own language can slot in.
+The official guide is marked _"work in progress"_ and stops mid-implementation. The `volarjs/starter`, by contrast, is a complete working artifact from the Volar team — last touched September 2024, pinned to `pnpm@9.1.0`, built with a hand-written esbuild script. Happy Path lives in the gap between them:
 
-MIT licensed. Fork freely. Publishing to the Marketplace (`vsce publish`) is out of scope — that needs a publisher token and a marketplace account.
+- **Current toolchain.** pnpm 11 workspace, Vite library mode for bundling, recent Volar.
+- **Visible lifecycle.** `console.log` at every plugin entry point so you can _see_ activation in VS Code's Output panel before you even think about reaching for a debugger.
+- **Full coverage.** Init → dev loop → `.vsix` pack. The same surface as the starter, brought up to date.
+
+Volar Happy Path focus is on getting the plumbing live so your own language can take its place. The `volarjs/starter` carries an example that demonstrates Volar's embedded-language story (HTML/CSS inside another language). Happy doesn't have this.
+
+Publishing to the Marketplace (`vsce publish`) is out of scope — that needs a publisher token and a marketplace account, both of which are yours to organise.
+
+Happy is MIT licensed. Fork freely.
 
 ## Quick start
 
-Prerequisites: Node 24+ (LTS) or Node 26 (current); pnpm 11+; VS Code.
+You'll need Node 24+ (LTS) or Node 26 (current), pnpm 11+, and VS Code.
 
 ```sh
 git clone https://github.com/athrio-com/volar-happy.git
@@ -31,14 +32,16 @@ cd volar-happy
 pnpm install
 ```
 
-Open the repo in VS Code, press <kbd>F5</kbd>.
+Then open the repo in VS Code and press <kbd>F5</kbd>.
 
-A second VS Code window opens ("Extension Development Host") with `samples/` already mounted. Open `samples/hello.happy`. Then:
+A second VS Code window — the "Extension Development Host" — opens with `samples/` already mounted. Open `samples/hello.happy`.
+
+Then:
 
 1. **View → Output** (<kbd>Cmd/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>U</kbd>)
 2. Choose **"Happy Language Server"** from the channel dropdown.
 
-You should see:
+You should see something like this:
 
 ```text
 [Happy] getLanguageId: /…/samples/hello.happy
@@ -50,11 +53,9 @@ You should see:
 [Happy]   first 1000 chars: "…"
 ```
 
-Type into the file. Every keystroke produces a fresh `updateVirtualCode` entry. That's the closed feedback loop with Volar.
+Type into the file. Every keystroke produces a fresh `updateVirtualCode` entry. That's the closed feedback loop with Volar — the loop your future parser, type checker, and language services all hook into.
 
-To produce a `.vsix` you can install or share: `pnpm run pack:vsix`. Details in section 9 below.
-
----
+To produce a `.vsix` you can install or share locally, run `pnpm run pack:vsix`. The full story is in section 9 below.
 
 ## Architecture
 
@@ -78,37 +79,30 @@ volar-happy/
 └── tsconfig.json                       Root — editor IntelliSense across the workspace
 ```
 
-**Three processes:**
+The runtime picture is three processes and two boundaries.
 
-1. **VS Code** — the editor.
-2. **The extension** (`packages/vscode`) — runs inside VS Code's extension host.
-3. **The language server** — a Node subprocess the extension spawns on first `.happy` open.
+The **three processes** are: VS Code itself (the editor); the **extension** (`packages/vscode`), running inside VS Code's extension host; and the **language server**, a Node subprocess the extension spawns when the first `.happy` file is opened.
 
-**Two boundaries:**
+The **two boundaries** between them are: VS Code ↔ extension, which is in-process via the VS Code extension API; and extension ↔ server, which is LSP messages (JSON-RPC) over IPC.
 
-- VS Code ↔ extension: in-process calls via the VS Code extension API.
-- Extension ↔ server: LSP messages (JSON-RPC) over IPC.
+All Volar-related code — the plugin, your future parser, your future services — runs in the **server**. The extension is a thin spawner; it has one job, it does that job, and it stays out of the way.
 
-All Volar-related code — the plugin, your future parser, your future services — runs in the **server**. The extension is a thin spawner.
-
-When you open a `.happy` file:
+When you open a `.happy` file, the sequence is:
 
 1. VS Code activates the extension on `onLanguage:happy`.
 2. The extension spawns the server via Node IPC.
 3. Volar wraps the document text in a snapshot and calls your plugin:
-   - `getLanguageId(uri)` → `'happy'`
-   - `createVirtualCode(uri, 'happy', snapshot)` ← **your parser runs here**
-4. Volar caches the returned `VirtualCode`. After that, it only re-enters your code on document changes (`updateVirtualCode`) or when an editor feature is requested (hover, completion, …).
-
----
+   - `getLanguageId(uri)` returns `'happy'`.
+   - `createVirtualCode(uri, 'happy', snapshot)` — **your parser runs here**.
+4. Volar caches the returned `VirtualCode`. From then on, it only re-enters your code on document changes (`updateVirtualCode`) or when an editor feature is requested — hover, completion, and so on.
 
 ## 📖 Building it from scratch
 
-The sections below walk through assembling Happy Path from an empty directory. They follow the same numbering as the official guide. If you're cloning this repo, read them as commentary on the source; if you're starting your own, follow them step by step.
+The sections that follow walk through assembling Happy Path from an empty directory. The numbering mirrors the official guide. If you're cloning this repo, read them as commentary on the source; if you're starting your own, follow them step by step.
 
 ### 1. Prerequisites
 
-- Node 20+ — Happy Path pins **Node 24 LTS** in `.nvmrc`; Node 26 (current) also works.
+- Node 20+. Happy Path pins **Node 24 LTS** in `.nvmrc`; Node 26 (current) also works.
 - pnpm 11+.
 - VS Code.
 
@@ -143,9 +137,9 @@ Replace the generated root `package.json` with:
 }
 ```
 
-The three root devDependencies are shared across the workspace: `typescript` powers the editor language service and any `tsc` invocation; `@types/node` so the root `tsconfig.json` can resolve Node globals; `vite` because both sub-packages' `build` scripts invoke it.
+The three root devDependencies are shared across the workspace: `typescript` powers the editor language service and any `tsc` invocation; `@types/node` lets the root `tsconfig.json` resolve Node globals; `vite` is here because both sub-packages' `build` scripts invoke it.
 
-Create `pnpm-workspace.yaml`:
+Next, `pnpm-workspace.yaml`:
 
 ```yaml
 packages:
@@ -156,9 +150,9 @@ allowBuilds:
   msgpackr-extract: true
 ```
 
-pnpm 11 won't run native postinstall scripts unless they're explicitly listed under `allowBuilds`. The three above are pulled in by Vite and Volar's transitive dependencies; without them you get `Ignored build scripts` warnings and native modules fail to load.
+pnpm 11 won't run native postinstall scripts unless they're explicitly listed under `allowBuilds`. The three above arrive transitively through Vite and Volar; without them you get `Ignored build scripts` warnings and the corresponding native modules fail to load.
 
-Then create stub manifests so pnpm registers the two sub-packages. They'll be filled in fully in sections 5 and 6.
+Now the stub manifests — just enough for pnpm to register the two sub-packages. They'll be fleshed out in sections 5 and 6.
 
 `packages/language-server/package.json`:
 ```json
@@ -170,9 +164,9 @@ Then create stub manifests so pnpm registers the two sub-packages. They'll be fi
 { "name": "volar-happy", "version": "0.1.0" }
 ```
 
-The names look asymmetric on purpose: the VS Code extension package must be `volar-happy` (unscoped — VS Code marketplace extension names are restricted to `[a-z0-9-]+`); the language-server is scoped because it's a regular npm package, not a published extension.
+The asymmetry in naming is deliberate. The VS Code extension package must be `volar-happy` — unscoped — because VS Code marketplace extension names are restricted to `[a-z0-9-]+`. The language-server is scoped because it's a regular npm package, not a published extension.
 
-Finally, install:
+Then install:
 
 ```sh
 pnpm install
@@ -182,7 +176,7 @@ This materialises the workspace and installs the root devDependencies.
 
 ### 3. TypeScript configuration
 
-`tsconfig.base.json` at the repo root:
+A `tsconfig.base.json` at the repo root:
 
 ```json
 {
@@ -201,7 +195,7 @@ This materialises the workspace and installs the root devDependencies.
 }
 ```
 
-These pin modern emit and lib types, real type-checking, fast rebuilds via `skipLibCheck`, shippable types and debuggable stacktraces, project references for the workspace, and dead-code warnings.
+These pin modern emit and lib types, real type-checking, fast rebuilds via `skipLibCheck`, shippable declarations, debuggable stack traces, project references across the workspace, and dead-code warnings.
 
 Each sub-package gets a thin `tsconfig.json` extending the base:
 
@@ -215,7 +209,7 @@ Each sub-package gets a thin `tsconfig.json` extending the base:
 
 ### 4. F5 wiring
 
-Create `.vscode/launch.json`:
+`.vscode/launch.json`:
 
 ```json
 {
@@ -253,7 +247,7 @@ Create `.vscode/launch.json`:
 }
 ```
 
-The `preLaunchTask: "build"` field is the bridge to `.vscode/tasks.json` — without that file, F5 would launch with stale or missing bundles:
+The `preLaunchTask: "build"` field is the bridge to `.vscode/tasks.json`. Without that file, F5 would launch with stale or missing bundles:
 
 ```json
 {
@@ -271,7 +265,7 @@ The `preLaunchTask: "build"` field is the bridge to `.vscode/tasks.json` — wit
 }
 ```
 
-`reveal: "always"` opens the terminal panel on every F5 so build output is visible. If the build fails you'll see why, instead of an Extension Development Host that mysteriously doesn't activate.
+`reveal: "always"` opens the terminal panel on every F5 so build output is visible. If the build fails, you'll see why — instead of staring at an Extension Development Host that mysteriously refuses to activate.
 
 ### 5. The client
 
@@ -314,9 +308,9 @@ Fill in `packages/vscode/package.json`:
 }
 ```
 
-All Volar/LSP packages live in `devDependencies` because the client bundle inlines them at build time; nothing is resolved through `node_modules` at runtime. That's the trick that lets the `.vsix` ship without `node_modules` at all (section 9).
+Every Volar/LSP package lives in `devDependencies` because the client bundle inlines them at build time; nothing is resolved through `node_modules` at runtime. That's the trick that lets the `.vsix` ship without `node_modules` at all (see section 9).
 
-`packages/vscode/src/vscode-extension.ts`:
+The client itself, `packages/vscode/src/vscode-extension.ts`:
 
 ```ts
 import * as serverProtocol from "@volar/language-server/protocol";
@@ -357,9 +351,9 @@ export function deactivate(): Thenable<any> | undefined {
 }
 ```
 
-The spawn path — `dist/server.js` — sits **inside the extension's own folder**. That's where Vite emits the bundled server alongside the bundled client (section 8). No workspace symlinks or `$PATH` lookups at runtime; the extension is fully self-contained.
+The spawn path — `dist/server.js` — sits **inside the extension's own folder**. That's where Vite emits the bundled server alongside the bundled client (section 8). No workspace symlinks, no `$PATH` lookups at runtime; the extension is fully self-contained.
 
-`packages/vscode/language-configuration.json` adds editor-side ergonomics. No LSP involved — VS Code reads this directly:
+`packages/vscode/language-configuration.json` adds editor-side ergonomics. No LSP involved here — VS Code reads this file directly:
 
 ```json
 {
@@ -377,7 +371,7 @@ The spawn path — `dist/server.js` — sits **inside the extension's own folder
 
 ### 6. The server
 
-Fill in `packages/language-server/package.json`:
+`packages/language-server/package.json`:
 
 ```json
 {
@@ -401,9 +395,9 @@ Fill in `packages/language-server/package.json`:
 }
 ```
 
-The language-server's runtime `dependencies` are real here — they're the Volar pieces the server's source actually imports. `vscode-uri` is a `devDependency`: Volar's published TypeScript types reference its `URI` class, but at runtime the LSP host hands URIs to the server, so the bundle never needs to construct them.
+The language-server's runtime `dependencies` are real here — these are the Volar pieces the server's source actually imports. `vscode-uri` is a `devDependency` because Volar's published TypeScript types reference its `URI` class, but at runtime the LSP host hands URIs to the server, so the bundle never needs to construct them itself.
 
-The cross-editor entry point — `packages/language-server/bin/happy-language-server.js`:
+The cross-editor entry point, `packages/language-server/bin/happy-language-server.js`:
 
 ```js
 #!/usr/bin/env node
@@ -415,9 +409,9 @@ if (process.argv.includes("--version")) {
 }
 ```
 
-Installing the language-server package via `npm`/`pnpm` puts `happy-language-server` on `$PATH`; Neovim, Zed, Helix, and other LSP clients that launch a server by executing a binary can use it. VS Code doesn't go through this shim — it spawns `dist/server.js` directly via Node IPC, which is faster than stdio and doesn't depend on the binary being on the user's PATH. Same compiled server, two entry points for two audiences.
+Installing the language-server package via `npm` or `pnpm` puts `happy-language-server` on `$PATH`. Neovim, Zed, Helix, and any other LSP client that launches a server by executing a binary can use it. VS Code skips this shim — it spawns `dist/server.js` directly via Node IPC, which is faster than stdio and doesn't depend on the binary being on the user's PATH. Same compiled server, two entry points for two audiences.
 
-`packages/language-server/src/index.ts` wires Volar's connection and registers services:
+`packages/language-server/src/index.ts` wires Volar's connection and registers the services:
 
 ```ts
 import { happyLanguagePlugin } from "./languagePlugin";
@@ -445,11 +439,11 @@ connection.onInitialized(server.initialized);
 connection.onShutdown(server.shutdown);
 ```
 
-`createSimpleProject([happyLanguagePlugin])` is what makes the plugin actually run when a `.happy` file opens. With an empty array the LSP server starts but does nothing observable — no `getLanguageId` call, no `createVirtualCode` call, no log output.
+The line doing the real work is `createSimpleProject([happyLanguagePlugin])` — that's what makes the plugin actually run when a `.happy` file opens. With an empty array, the LSP server still starts but does nothing observable: no `getLanguageId` call, no `createVirtualCode` call, no log output at all.
 
 ### 7. The language plugin
 
-`packages/language-server/src/languagePlugin.ts`:
+This is the file your future language slots into. `packages/language-server/src/languagePlugin.ts`:
 
 ```ts
 // packages/language-server/src/languagePlugin.ts — excerpt
@@ -484,13 +478,13 @@ export class HappyVirtualCode implements VirtualCode {
 }
 ```
 
-Two patterns worth pointing at.
+Two patterns here are worth pausing on.
 
-**Mutation on update.** `updateVirtualCode` mutates the existing `HappyVirtualCode` instance via `code.update(snapshot)` rather than creating a fresh one. Volar reuses the same `VirtualCode` identity across edits and any downstream caches keyed on it stay valid.
+**Mutation on update.** `updateVirtualCode` mutates the existing `HappyVirtualCode` instance via `code.update(snapshot)` rather than constructing a fresh one. Volar reuses the same `VirtualCode` identity across edits, and any downstream caches keyed on that identity stay valid.
 
 **The `mappings` field.** The `VirtualCode` interface declares `mappings: CodeMapping[]` as required. Without it, `implements VirtualCode` doesn't compile. Even the stub needs an identity mapping over the whole document so downstream services can see source coordinates.
 
-The diagnostic `console.log` lines in the actual source fire from these methods. That's how the `[Happy]` trace surfaces in the Output panel.
+The diagnostic `console.log` lines in the actual source fire from these methods. That's how the `[Happy]` trace surfaces in the Output panel — and what makes the activation loop visible without ever attaching a debugger.
 
 ### 8. Bundling
 
@@ -533,13 +527,13 @@ export default defineConfig({
 })
 ```
 
-Two specifics worth knowing.
+Two specifics about this config are worth knowing.
 
-**The `umd2esm` plugin** is the trick `volarjs/starter` uses (there as an esbuild `onResolve` hook). Packages like `vscode-html-languageservice` and `jsonc-parser` ship UMD bundles whose internal `require("./parser/…")` calls confuse rolldown; rewriting imports to use the package's parallel `/esm/` build sidesteps the issue. `enforce: "pre"` is critical — without it Vite's built-in resolver handles the package first and the rewrite never fires.
+**The `umd2esm` plugin** is the trick `volarjs/starter` uses (over there as an esbuild `onResolve` hook). Packages like `vscode-html-languageservice` and `jsonc-parser` ship UMD bundles whose internal `require("./parser/…")` calls confuse rolldown; rewriting the import to its `/esm/` sibling sidesteps the issue. `enforce: "pre"` is critical here — without it, Vite's built-in resolver handles the package first and the rewrite never fires.
 
-**`resolve.conditions: ["node"]`.** Vite's defaults are browser-first. `vscode-languageclient` and `@volar/language-server` have `node`-conditioned export maps; without this line the bundler resolves browser-shaped modules and `TransportKind` ends up `undefined` at runtime.
+**`resolve.conditions: ["node"]`.** Vite's defaults are browser-first. Both `vscode-languageclient` and `@volar/language-server` have `node`-conditioned export maps; without this line, the bundler resolves browser-shaped modules and `TransportKind` ends up `undefined` at runtime.
 
-The language-server package has its own `vite.config.ts` with the same `umd2esm` plugin and the same fully-bundled posture, but with a single entry producing `dist/happy-server.js` for the bin shim. The two server bundles are interchangeable — one ships inside the extension, the other is for cross-editor consumers.
+The language-server package has its own `vite.config.ts` with the same `umd2esm` plugin and the same fully-bundled posture, but with a single entry producing `dist/happy-server.js` for the bin shim. The two server bundles are interchangeable: one ships inside the extension, the other is for cross-editor consumers.
 
 ### 9. Packaging
 
@@ -561,7 +555,7 @@ Install it locally with:
 code --install-extension packages/vscode/volar-happy-0.1.0.vsix
 ```
 
-…or via the Extensions panel's **"Install from VSIX…"** menu. Open a `.happy` file in any VS Code window and you should see the same activation trace as F5 produced.
+…or through the Extensions panel's **"Install from VSIX…"** menu. Open a `.happy` file in any VS Code window, and you should see the same activation trace that F5 produced.
 
 ---
 
