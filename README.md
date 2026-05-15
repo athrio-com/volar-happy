@@ -455,23 +455,34 @@ Create [`packages/language-server/src/languagePlugin.ts`](./packages/language-se
 
 ```ts
 // packages/language-server/src/languagePlugin.ts — excerpt
-// …
 
 export const happyLanguagePlugin = {
-  getLanguageId(uri)                                { /* … */ },
-  createVirtualCode(uri, languageId, snapshot)      { /* … */ },
-  updateVirtualCode(uri, code: HappyVirtualCode, s) { code.update(s); return code; },  // [+]
+  getLanguageId(uri) {
+    if (uri.path.endsWith(".happy")) return "happy";
+  },
+  createVirtualCode(uri, languageId, snapshot) {
+    if (languageId === "happy") return new HappyVirtualCode(snapshot);
+  },
+  updateVirtualCode(uri, languageCode: HappyVirtualCode, snapshot) {
+    languageCode.update(snapshot);    // [+] mutate the existing instance — Volar keeps the
+    return languageCode;              //     same VirtualCode identity across edits
+  },
 } satisfies LanguagePlugin<URI>;
 
 export class HappyVirtualCode implements VirtualCode {
   id = "root";
   languageId = "happy";
-  mappings: CodeMapping[] = [];           // [+]
+  mappings: CodeMapping[] = [];       // [+] REQUIRED — guide's class snippet omits this field
   embeddedCodes: VirtualCode[] = [];
 
-  // constructor + update() both call onSnapshotUpdated(),
-  // which writes the identity mapping into `this.mappings`
-  // and is the seam your parser plugs into.
+  constructor(public snapshot: ts.IScriptSnapshot) { this.onSnapshotUpdated(); }
+  update(snapshot: ts.IScriptSnapshot)             { this.snapshot = snapshot; this.onSnapshotUpdated(); }
+
+  private onSnapshotUpdated() {
+    // Identity mapping over the whole document — downstream services need
+    // it to see source coordinates. Your future parser plugs in here too.
+    this.mappings = [/* { sourceOffsets: [0], generatedOffsets: [0], lengths: [doc length], data: { … } } */];
+  }
 }
 ```
 
