@@ -361,55 +361,27 @@ Each package's own `tsconfig.json`:
 
 **`[fix]`** — `@volar-happy/language-server` must be declared as `"workspace:*"`. pnpm uses this to create the symlink at `packages/vscode/node_modules/@volar-happy/language-server/`. The extension code below spawns the server through that symlinked path; the spawn fails with `Cannot find module …` if the dependency isn't declared.
 
-`packages/vscode/src/vscode-extension.ts`:
+**Full file:** [`packages/vscode/src/vscode-extension.ts`](./packages/vscode/src/vscode-extension.ts). The lines that earn explanation:
 
 ```ts
-import * as serverProtocol from "@volar/language-server/protocol";
-import { activateAutoInsertion, createLabsInfo } from "@volar/vscode";
-import * as vscode from "vscode";
-import * as lsp from "vscode-languageclient/node";
+// Spawn-path: resolved through the pnpm symlink created by the
+// workspace:* dep declared above. If you change the package name,
+// keep these joinPath segments in sync.
+const serverModule = vscode.Uri.joinPath(
+  context.extensionUri,
+  "node_modules", "@volar-happy", "language-server",
+  "dist", "happy-server.js",
+);
 
-let client: lsp.BaseLanguageClient;
-
-export async function activate(context: vscode.ExtensionContext) {
-  const serverModule = vscode.Uri.joinPath(
-    context.extensionUri,
-    "node_modules", "@volar-happy", "language-server",
-    "dist", "happy-server.js",
-  );
-  const serverOptions: lsp.ServerOptions = {
-    run: {
-      module: serverModule.fsPath,
-      transport: lsp.TransportKind.ipc,
-      options: { execArgv: [] as string[] },
-    },
-    debug: {
-      module: serverModule.fsPath,
-      transport: lsp.TransportKind.ipc,
-      options: { execArgv: ["--nolazy", "--inspect=6009"] },
-    },
-  };
-  const clientOptions: lsp.LanguageClientOptions = {
-    documentSelector: [{ language: "happy" }],
-    initializationOptions: {},
-  };
-  client = new lsp.LanguageClient(
-    "happy-language-server",
-    "Happy Language Server",
-    serverOptions,
-    clientOptions,
-  );
-  await client.start();
-  activateAutoInsertion("happy", client);
-  const labsInfo = createLabsInfo(serverProtocol);
-  labsInfo.addLanguageClient(client);
-  return labsInfo.extensionExports;
-}
-
-export function deactivate(): Thenable<any> | undefined {
-  return client?.stop();
-}
+// IPC transport: child_process.fork() + Node IPC.
+// Structured cloning, no per-message JSON serialisation.
+const serverOptions: lsp.ServerOptions = {
+  run:   { module: serverModule.fsPath, transport: lsp.TransportKind.ipc, options: { execArgv: [] as string[] } },
+  debug: { module: serverModule.fsPath, transport: lsp.TransportKind.ipc, options: { execArgv: ["--nolazy", "--inspect=6009"] } },
+};
 ```
+
+The rest of `activate()` is conventional LSP wiring: build `clientOptions` with `documentSelector: [{ language: "happy" }]`, construct `lsp.LanguageClient`, `await client.start()`, register `activateAutoInsertion("happy", client)` for Volar's tag-completion, and create a `createLabsInfo(serverProtocol)` handle for the optional Volar Labs inspector. `deactivate()` calls `client?.stop()`.
 
 **`[+]`** `packages/vscode/language-configuration.json` — pure VS-Code-side metadata (brackets, comments, auto-pairs). No LSP involved; the editor reads it directly. The official guide doesn't cover this; it's an easy ergonomic win.
 
@@ -549,24 +521,13 @@ Both bundles end up tiny (~3 KB — only your own source).
 
 **This is where the official guide stops.**
 
-`packages/language-server/src/languagePlugin.ts`:
+**Full file:** [`packages/language-server/src/languagePlugin.ts`](./packages/language-server/src/languagePlugin.ts). The shape, with only the lines that earn explanation:
 
 ```ts
-import type { CodeMapping, LanguagePlugin, VirtualCode } from "@volar/language-core";
-import type { URI } from "vscode-uri";
-import type * as ts from "typescript";
-
 export const happyLanguagePlugin = {
-  getLanguageId(uri) {
-    if (uri.path.endsWith(".happy")) return "happy";
-  },
-  createVirtualCode(uri, languageId, snapshot) {
-    if (languageId === "happy") return new HappyVirtualCode(snapshot);
-  },
-  updateVirtualCode(uri, code: HappyVirtualCode, snapshot) {
-    code.update(snapshot);
-    return code;
-  },
+  getLanguageId(uri)                                { /* "happy" if uri.path.endsWith(".happy") */ },
+  createVirtualCode(uri, languageId, snapshot)      { /* return new HappyVirtualCode(snapshot) */ },
+  updateVirtualCode(uri, code: HappyVirtualCode, s) { code.update(s); return code; /* [+] mutate */ },
 } satisfies LanguagePlugin<URI>;
 
 export class HappyVirtualCode implements VirtualCode {
@@ -575,39 +536,15 @@ export class HappyVirtualCode implements VirtualCode {
   mappings: CodeMapping[] = [];                // [fix] REQUIRED — guide omits this field
   embeddedCodes: VirtualCode[] = [];
 
-  constructor(public snapshot: ts.IScriptSnapshot) {
-    this.onSnapshotUpdated();
-  }
-
-  update(newSnapshot: ts.IScriptSnapshot) {    // [+] mutation-on-update pattern
-    this.snapshot = newSnapshot;
-    this.onSnapshotUpdated();
-  }
-
-  private onSnapshotUpdated() {
-    const text = this.snapshot.getText(0, this.snapshot.getLength());
-
-    // Identity mapping — required for downstream services to see the source.
-    this.mappings = [{
-      sourceOffsets:    [0],
-      generatedOffsets: [0],
-      lengths:          [text.length],
-      data: {
-        completion: true, format:    true, navigation:   true,
-        semantic:   true, structure: true, verification: true,
-      },
-    }];
-
-    // [+] Your parser plugs in here. For now: just log.
-    //   const ast = parseHappy(text);
-    //   this.embeddedCodes = [...collectEmbeddedCodes(ast)];
-  }
+  // constructor + update() both call onSnapshotUpdated(), which:
+  //  (a) writes an identity mapping over the whole document into `this.mappings`,
+  //  (b) is the seam your parser plugs into to produce `this.embeddedCodes`.
 }
 ```
 
 **`[fix]`** — `mappings: CodeMapping[] = []` is **required** by the `VirtualCode` interface. The guide's `Html1Code` snippet declares `id`, `languageId`, `embeddedCodes`, and `snapshot` but omits `mappings`, so `implements VirtualCode` won't compile.
 
-**`[+]`** — `update()` + `onSnapshotUpdated()` is the **mutation-on-update** pattern from the Volar 2.x `LanguagePlugin` API: Volar reuses the same `VirtualCode` identity across edits, and downstream caches keyed on it stay valid. The guide's older snippet creates a fresh class each edit.
+**`[+]`** — `update()` is the **mutation-on-update** pattern from the Volar 2.x `LanguagePlugin` API: Volar reuses the same `VirtualCode` identity across edits, and downstream caches keyed on it stay valid. The guide's older snippet creates a fresh class each edit.
 
 The six `data` flags control which LSP features Volar routes through this mapping:
 
