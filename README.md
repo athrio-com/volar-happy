@@ -146,7 +146,7 @@ pnpm init                                  # root package.json
 mkdir -p packages/language-server packages/vscode
 ```
 
-Root `package.json`:
+Create the root `package.json`:
 
 ```json
 {
@@ -189,7 +189,7 @@ allowBuilds:                      # [fix] pnpm 11 requires explicit approval for
 
 **`[fix]`** — without `allowBuilds`, pnpm 11 prints `Ignored build scripts: @parcel/watcher, esbuild, msgpackr-extract` and those packages don't fully install. Native modules used by Vite & co. will then fail at build or run time.
 
-Stub manifests so pnpm registers the sub-packages as workspaces. Filled in fully in sections 5 and 6:
+Create a stub `package.json` in each sub-package so pnpm registers them as workspaces. Filled in fully in sections 5 and 6:
 
 `packages/language-server/package.json`:
 
@@ -233,9 +233,9 @@ The `pnpm --filter @volar-happy/vscode add @volar-happy/language-server` step re
 
 ### 3. Installing and configuring TypeScript
 
-`typescript` is already in the root `devDependencies` from section 2 — one TS version shared across the workspace. All you need to add here is the configs.
+`typescript` is already in the root `devDependencies` from section 2 — one TS version shared across the workspace. Add the configs.
 
-`tsconfig.base.json` at repo root:
+Create `tsconfig.base.json` at the repo root:
 
 ```json
 {
@@ -256,7 +256,7 @@ The `pnpm --filter @volar-happy/vscode add @volar-happy/language-server` step re
 
 **`[+]`** — the guide's base is just `{ "module": "nodenext" }`. That inherits TypeScript's silent defaults: `target: ES5`, `strict: false`, no declarations, no sourcemaps. The base above is what `volarjs/starter` uses and what you actually want for a server you'll iterate on.
 
-Each package's own `tsconfig.json`:
+In each sub-package, create a `tsconfig.json`:
 
 ```json
 {
@@ -268,7 +268,7 @@ Each package's own `tsconfig.json`:
 
 ### 4. Defining VS Code tasks
 
-`.vscode/launch.json`:
+Create `.vscode/launch.json`:
 
 ```json
 {
@@ -306,7 +306,7 @@ Each package's own `tsconfig.json`:
 }
 ```
 
-**`[+]`** `.vscode/tasks.json` — the guide stops at `launch.json` and leaves "how do you build before launching?" implicit:
+**`[+]`** Create `.vscode/tasks.json` — the guide stops at `launch.json` and leaves "how do you build before launching?" implicit:
 
 ```json
 {
@@ -328,7 +328,7 @@ Each package's own `tsconfig.json`:
 
 ### 5. The client (`packages/vscode`)
 
-`packages/vscode/package.json`:
+Create `packages/vscode/package.json`:
 
 ```json
 {
@@ -363,7 +363,7 @@ Each package's own `tsconfig.json`:
 
 **`[fix]`** — `@volar-happy/language-server` must be declared as `"workspace:*"`. pnpm uses this to create the symlink at `packages/vscode/node_modules/@volar-happy/language-server/`. The extension code below spawns the server through that symlinked path; the spawn fails with `Cannot find module …` if the dependency isn't declared.
 
-**Full file:** [`packages/vscode/src/vscode-extension.ts`](./packages/vscode/src/vscode-extension.ts). The lines that earn explanation:
+Create [`packages/vscode/src/vscode-extension.ts`](./packages/vscode/src/vscode-extension.ts). Notice:
 
 ```ts
 // packages/vscode/src/vscode-extension.ts — excerpt
@@ -387,7 +387,7 @@ const serverOptions: lsp.ServerOptions = {
 
 The rest of `activate()` is conventional LSP wiring: build `clientOptions` with `documentSelector: [{ language: "happy" }]`, construct `lsp.LanguageClient`, `await client.start()`, register `activateAutoInsertion("happy", client)`, and return a `createLabsInfo(serverProtocol)` handle for the optional Volar Labs inspector.
 
-**`[+]`** `packages/vscode/language-configuration.json` — pure VS-Code-side metadata (brackets, comments, auto-pairs). No LSP involved; the editor reads it directly. The official guide doesn't cover this; it's an easy ergonomic win.
+**`[+]`** Create `packages/vscode/language-configuration.json` — VS-Code-side metadata only (brackets, comments, auto-pairs). No LSP involved; the editor reads it directly. The guide skips this; it's an easy ergonomic win:
 
 ```json
 {
@@ -405,7 +405,7 @@ The rest of `activate()` is conventional LSP wiring: build `clientOptions` with 
 
 ### 6. The server (`packages/language-server`)
 
-`packages/language-server/package.json`:
+Create `packages/language-server/package.json`:
 
 ```json
 {
@@ -429,32 +429,21 @@ The rest of `activate()` is conventional LSP wiring: build `clientOptions` with 
 }
 ```
 
-`packages/language-server/src/index.ts`:
+Create [`packages/language-server/src/index.ts`](./packages/language-server/src/index.ts). Notice the plugin registration:
 
 ```ts
-import { happyLanguagePlugin } from "./languagePlugin";
-import { create as createHtmlService } from "volar-service-html";
-import { create as createCssService } from "volar-service-css";
-import {
-  createServer,
-  createConnection,
-  createSimpleProject,
-} from "@volar/language-server/node";
-
-const connection = createConnection();
-const server = createServer(connection);
-connection.listen();
+// packages/language-server/src/index.ts — excerpt
+// …
 
 connection.onInitialize((params) => {
   return server.initialize(
     params,
-    createSimpleProject([happyLanguagePlugin]),     // [fix] register the plugin
-    [createHtmlService(), createCssService()],      // Volar language services
+    createSimpleProject([happyLanguagePlugin]),    // [fix] register the plugin
+    [createHtmlService(), createCssService()],
   );
 });
 
-connection.onInitialized(server.initialized);
-connection.onShutdown(server.shutdown);
+// …
 ```
 
 **`[fix]`** — the plugin must be **actually registered** in `createSimpleProject([happyLanguagePlugin])`. The guide's snippet passes an empty array, so opening a `.happy` file produces no logs and no virtual code construction — the LSP server runs but is inert.
@@ -463,7 +452,7 @@ connection.onShutdown(server.shutdown);
 
 The official guide and `volarjs/starter` use esbuild via a hand-written build script; Happy Path uses Vite library mode for both packages. Same outcome (one CJS bundle per package), fewer moving parts.
 
-**Full files:** [`packages/language-server/vite.config.ts`](./packages/language-server/vite.config.ts), [`packages/vscode/vite.config.ts`](./packages/vscode/vite.config.ts). Both packages share the same shape — only the entry path, output filename, and the client's extra `"vscode"` external differ:
+Create [`packages/language-server/vite.config.ts`](./packages/language-server/vite.config.ts) and [`packages/vscode/vite.config.ts`](./packages/vscode/vite.config.ts). They share the same shape — only the entry path, output filename, and the client's extra `"vscode"` external differ. Notice:
 
 ```ts
 // packages/language-server/vite.config.ts — excerpt
@@ -493,7 +482,7 @@ export default defineConfig({
 
 **This is where the official guide stops.**
 
-**Full file:** [`packages/language-server/src/languagePlugin.ts`](./packages/language-server/src/languagePlugin.ts). The shape, with only the lines that earn explanation:
+Create [`packages/language-server/src/languagePlugin.ts`](./packages/language-server/src/languagePlugin.ts). Notice:
 
 ```ts
 // packages/language-server/src/languagePlugin.ts — excerpt
