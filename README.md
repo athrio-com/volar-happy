@@ -7,7 +7,7 @@
 
 ---
 
-> 💛 **Happy Path** — distilled from **Yegór Karimov**'s real-world work on a
+> 🥬 **Happy Path** — distilled from **Yegór Karimov**'s real-world work on a
 > literate programming framework. The walls he hit so you don't.
 >
 > ☕📚 If it saved you a weekend, consider supporting our education organisation
@@ -19,7 +19,7 @@ which is marked _"work in progress"_ at the top and stops mid-implementation
 in the `languagePlugin.ts` section. The Happy Path picks up where that guide
 leaves off and gives you a **runnable starter** with the gaps filled in:
 
-- pnpm workspace (the guide and the official [`volarjs/starter`](https://github.com/volarjs/starter) both assume something; this is explicit and current)
+- pnpm 11 workspace, explicit and current (pinned via `packageManager`, with `pnpm-workspace.yaml` and the `allowBuilds` block pnpm 11 introduced)
 - Vite library mode for both packages (replaces the `bun build` / `esbuild` script the guide elides)
 - A complete `HappyVirtualCode` class — including the `mappings` field the guide's `Html1Code` snippet omits, which is required by `VirtualCode`
 - The plugin actually registered in `createSimpleProject([happyLanguagePlugin])` (the guide's example passes an empty array)
