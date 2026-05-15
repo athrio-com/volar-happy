@@ -144,20 +144,33 @@ pnpm init                                  # root package.json
 mkdir -p packages/language-server packages/vscode
 ```
 
-Root `package.json` (minimal):
+Root `package.json`:
 
 ```json
 {
   "name": "volar-happy",
+  "version": "0.1.0",
+  "type": "module",
   "private": true,
   "packageManager": "pnpm@11.1.2",
   "engines": { "node": ">=24", "pnpm": ">=11" },
   "scripts": {
     "build": "pnpm -r build",
     "watch": "pnpm -r --parallel watch"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.12"
   }
 }
 ```
+
+Root devDependencies are the build tools and types every package shares:
+
+- `typescript` — root `tsc` command and editor language service across the workspace.
+- `@types/node` — needed by the root `tsconfig.json`'s `"types": ["node"]` so the editor resolves Node globals.
+- `vite` — `pnpm -r build` invokes each package's `vite build` script; vite needs to be on the PATH that pnpm's script runner extends. Keeping it at the root means a single version pinned across both packages.
 
 Create `pnpm-workspace.yaml`:
 
