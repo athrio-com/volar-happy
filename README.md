@@ -78,14 +78,14 @@ You now have a closed feedback loop with Volar. Build a real plugin on top.
 volar-happy/
 ├── packages/
 │   ├── language-server/                LSP server (Node subprocess)
-│   │   ├── bin/happy-language-server.js   CLI shim — editor-agnostic, used by clients that launch a binary (Neovim, Zed, Helix)
+│   │   ├── bin/happy-language-server.js   CLI shim for clients that launch the server as a binary (Neovim, Zed, …)
 │   │   ├── src/
 │   │   │   ├── index.ts                Wires Volar's connection, registers services
-│   │   │   └── languagePlugin.ts       The plugin — getLanguageId, createVirtualCode, updateVirtualCode
+│   │   │   └── languagePlugin.ts       getLanguageId, createVirtualCode, updateVirtualCode
 │   │   └── vite.config.ts              Library bundle → dist/happy-server.js (CJS, Node target)
 │   └── vscode/                         VS Code extension (the "client")
 │       ├── src/vscode-extension.ts     Spawns the server, attaches LanguageClient
-│       ├── language-configuration.json VS Code level brackets, comments, auto-closing pairs (no LSP involved)
+│       ├── language-configuration.json VS Code editor metadata: brackets, comments, auto-pairs
 │       └── vite.config.ts              Library bundle → dist/vscode-extension.js
 ├── samples/hello.happy                 Demo file to open in the Extension Development Host
 ├── .vscode/
@@ -107,7 +107,7 @@ volar-happy/
 - VS Code ↔ extension: in-process calls via the VS Code extension API.
 - Extension ↔ server: LSP messages (JSON-RPC) over IPC.
 
-Everything Volar-related — happy plugin, happy future parser, happy future services — runs in the **server**. The extension is just a thin spawner that hands work off over LSP.
+All Volar-related code — the plugin, your future parser, your future services — runs in the **server**. The extension is a thin spawner.
 
 The flow when you open a `.happy` file:
 
@@ -189,7 +189,7 @@ allowBuilds:                      # [fix] pnpm 11 requires explicit approval for
 
 **`[fix]`** — without `allowBuilds`, pnpm 11 prints `Ignored build scripts: @parcel/watcher, esbuild, msgpackr-extract` and those packages don't fully install. Native modules used by Vite & co. will then fail at build or run time.
 
-Stub `package.json` for each sub-package so pnpm can register them as workspaces. These get filled in fully in sections 5 and 6 — at this stage they just need a name pnpm can resolve with `--filter`:
+Stub manifests so pnpm registers the sub-packages as workspaces. Filled in fully in sections 5 and 6:
 
 `packages/language-server/package.json`:
 
@@ -366,24 +366,26 @@ Each package's own `tsconfig.json`:
 **Full file:** [`packages/vscode/src/vscode-extension.ts`](./packages/vscode/src/vscode-extension.ts). The lines that earn explanation:
 
 ```ts
-// Spawn-path: resolved through the pnpm symlink created by the
-// workspace:* dep declared above. If you change the package name,
-// keep these joinPath segments in sync.
+// packages/vscode/src/vscode-extension.ts — excerpt
+// …
+
+// Resolved through the pnpm workspace:* symlink declared above.
 const serverModule = vscode.Uri.joinPath(
   context.extensionUri,
   "node_modules", "@volar-happy", "language-server",
   "dist", "happy-server.js",
 );
 
-// IPC transport: child_process.fork() + Node IPC.
-// Structured cloning, no per-message JSON serialisation.
+// IPC: child_process.fork() + Node IPC, no per-message JSON serialisation.
 const serverOptions: lsp.ServerOptions = {
   run:   { module: serverModule.fsPath, transport: lsp.TransportKind.ipc, options: { execArgv: [] as string[] } },
   debug: { module: serverModule.fsPath, transport: lsp.TransportKind.ipc, options: { execArgv: ["--nolazy", "--inspect=6009"] } },
 };
+
+// …
 ```
 
-The rest of `activate()` is conventional LSP wiring: build `clientOptions` with `documentSelector: [{ language: "happy" }]`, construct `lsp.LanguageClient`, `await client.start()`, register `activateAutoInsertion("happy", client)` for Volar's tag-completion, and create a `createLabsInfo(serverProtocol)` handle for the optional Volar Labs inspector. `deactivate()` calls `client?.stop()`.
+The rest of `activate()` is conventional LSP wiring: build `clientOptions` with `documentSelector: [{ language: "happy" }]`, construct `lsp.LanguageClient`, `await client.start()`, register `activateAutoInsertion("happy", client)`, and return a `createLabsInfo(serverProtocol)` handle for the optional Volar Labs inspector.
 
 **`[+]`** `packages/vscode/language-configuration.json` — pure VS-Code-side metadata (brackets, comments, auto-pairs). No LSP involved; the editor reads it directly. The official guide doesn't cover this; it's an easy ergonomic win.
 
@@ -447,7 +449,7 @@ connection.onInitialize((params) => {
   return server.initialize(
     params,
     createSimpleProject([happyLanguagePlugin]),     // [fix] register the plugin
-    [createHtmlService(), createCssService()],
+    [createHtmlService(), createCssService()],      // Volar language services
   );
 });
 
@@ -461,9 +463,13 @@ connection.onShutdown(server.shutdown);
 
 The official guide and `volarjs/starter` use esbuild via a hand-written build script; Happy Path uses Vite library mode for both packages. Same outcome (one CJS bundle per package), fewer moving parts.
 
-**Full files:** [`packages/language-server/vite.config.ts`](./packages/language-server/vite.config.ts), [`packages/vscode/vite.config.ts`](./packages/vscode/vite.config.ts). Both packages share the same shape — entry path, output filename, and the client's extra `"vscode"` external are the only differences. The teaching skeleton:
+**Full files:** [`packages/language-server/vite.config.ts`](./packages/language-server/vite.config.ts), [`packages/vscode/vite.config.ts`](./packages/vscode/vite.config.ts). Both packages share the same shape — only the entry path, output filename, and the client's extra `"vscode"` external differ:
 
 ```ts
+// packages/language-server/vite.config.ts — excerpt
+// …
+// const isExternal = (id) => true if id is in package.json `dependencies`
+
 export default defineConfig({
   resolve: {
     conditions: ["node"],            // pick the Node export branch
@@ -478,18 +484,10 @@ export default defineConfig({
       formats: ["cjs"],              // VS Code's extension host expects CJS
       fileName: () => "happy-server.js",
     },
-    rollupOptions: { external: isExternal },   // do not bundle runtime deps
+    rollupOptions: { external: isExternal },
   },
 });
 ```
-
-Two choices worth being explicit about:
-
-**`resolve.conditions: ["node"]`** — Vite's default conditions are browser-first. `vscode-languageclient` and `@volar/language-server` both have a `node`-conditioned `exports` map. Without this line, the bundler resolves a browser-shaped module and `TransportKind` ends up `undefined` at runtime.
-
-**Runtime deps are externalised, not bundled.** rolldown (Vite 8's bundler) cannot rewrite `require()` calls inside UMD wrappers used by packages such as `vscode-html-languageservice`. Bundling them produces `MODULE_NOT_FOUND` at runtime. The `isExternal` helper in each `vite.config.ts` reads each package's own `dependencies` from `package.json` and externalises them; Node resolves them through pnpm-linked `node_modules` instead. Both bundles end up tiny (~3 KB — only your own source).
-
-This choice has consequences at publish time (the deps must travel inside the VSIX, which means a `pnpm deploy` step before `vsce package`) — but publishing is out of scope for Happy Path, so we don't dwell on it.
 
 ### 8. Defining the language — `languagePlugin.ts`
 
@@ -498,21 +496,24 @@ This choice has consequences at publish time (the deps must travel inside the VS
 **Full file:** [`packages/language-server/src/languagePlugin.ts`](./packages/language-server/src/languagePlugin.ts). The shape, with only the lines that earn explanation:
 
 ```ts
+// packages/language-server/src/languagePlugin.ts — excerpt
+// …
+
 export const happyLanguagePlugin = {
-  getLanguageId(uri)                                { /* "happy" if uri.path.endsWith(".happy") */ },
-  createVirtualCode(uri, languageId, snapshot)      { /* return new HappyVirtualCode(snapshot) */ },
-  updateVirtualCode(uri, code: HappyVirtualCode, s) { code.update(s); return code; /* [+] mutate */ },
+  getLanguageId(uri)                                { /* … */ },
+  createVirtualCode(uri, languageId, snapshot)      { /* … */ },
+  updateVirtualCode(uri, code: HappyVirtualCode, s) { code.update(s); return code; },  // [+] mutate
 } satisfies LanguagePlugin<URI>;
 
 export class HappyVirtualCode implements VirtualCode {
   id = "root";
   languageId = "happy";
-  mappings: CodeMapping[] = [];                // [fix] REQUIRED — guide omits this field
+  mappings: CodeMapping[] = [];           // [fix] REQUIRED — guide omits this field
   embeddedCodes: VirtualCode[] = [];
 
-  // constructor + update() both call onSnapshotUpdated(), which:
-  //  (a) writes an identity mapping over the whole document into `this.mappings`,
-  //  (b) is the seam your parser plugs into to produce `this.embeddedCodes`.
+  // constructor + update() both call onSnapshotUpdated(),
+  // which writes the identity mapping into `this.mappings`
+  // and is the seam your parser plugs into.
 }
 ```
 
