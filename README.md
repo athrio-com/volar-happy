@@ -129,8 +129,7 @@ project by reading only this README. Snippets are adapted to
 `.happy` / `happy` / `Happy`. Inline annotations mark where Happy Path
 diverges from the guide and why:
 
-- **`[fix]`** — Happy Path does it differently because the guide is incomplete or breaks at runtime.
-- **`[+]`** — Happy Path adds something the guide omits.
+**`[+]`** marks a point where Happy Path diverges from the guide — either by adding what the guide skips or by correcting something that doesn't work as written. The prose around each `[+]` tells you which.
 
 ### 1. Prerequisites
 
@@ -179,15 +178,15 @@ Create `pnpm-workspace.yaml`:
 ```yaml
 packages:
   - packages/*
-allowBuilds:                      # [fix] pnpm 11 requires explicit approval for native postinstalls
+allowBuilds:                      # [+] pnpm 11 requires explicit approval for native postinstalls
   '@parcel/watcher': true
   esbuild: true
   msgpackr-extract: true
 ```
 
-**`[fix]`** — pnpm reads `pnpm-workspace.yaml`, **not** the `workspaces` field in `package.json` (that's a Bun/Yarn convention pnpm silently ignores).
+**`[+]`** — pnpm reads `pnpm-workspace.yaml`, **not** the `workspaces` field in `package.json` (that's a Bun/Yarn convention pnpm silently ignores).
 
-**`[fix]`** — without `allowBuilds`, pnpm 11 prints `Ignored build scripts: @parcel/watcher, esbuild, msgpackr-extract` and those packages don't fully install. Native modules used by Vite & co. will then fail at build or run time.
+**`[+]`** — without `allowBuilds`, pnpm 11 prints `Ignored build scripts: @parcel/watcher, esbuild, msgpackr-extract` and those packages don't fully install. Native modules used by Vite & co. will then fail at build or run time.
 
 Create a stub `package.json` in each sub-package so pnpm registers them as workspaces. Filled in fully in sections 5 and 6:
 
@@ -216,18 +215,18 @@ Install runtime dependencies into each sub-package:
 pnpm --filter @volar-happy/language-server add \
   @volar/language-server @volar/language-core @volar/language-service \
   volar-service-html volar-service-css vscode-html-languageservice
-pnpm --filter @volar-happy/language-server add -D vscode-uri   # [fix] type-only need
+pnpm --filter @volar-happy/language-server add -D vscode-uri   # [+] type-only need
 
 # vscode client
 pnpm --filter @volar-happy/vscode add \
   @volar-happy/language-server @volar/language-server @volar/vscode \
   vscode-languageclient
-pnpm --filter @volar-happy/vscode add -D @types/vscode         # [fix] devDependency, not dependency
+pnpm --filter @volar-happy/vscode add -D @types/vscode         # [+] devDependency, not dependency
 ```
 
-**`[fix]`** — `vscode-uri` is a **devDependency** of `language-server`. Volar's published TypeScript types reference `URI` from it, so the compiler needs it; but at runtime VS Code's host provides URIs, the bundle never constructs them, and shipping it as a runtime dep is pure cost.
+**`[+]`** — `vscode-uri` is a **devDependency** of `language-server`. Volar's published TypeScript types reference `URI` from it, so the compiler needs it; but at runtime VS Code's host provides URIs, the bundle never constructs them, and shipping it as a runtime dep is pure cost.
 
-**`[fix]`** — `@types/vscode` is a **devDependency** of `vscode`. Types are erased at build time and don't ship to users.
+**`[+]`** — `@types/vscode` is a **devDependency** of `vscode`. Types are erased at build time and don't ship to users.
 
 The `pnpm --filter @volar-happy/vscode add @volar-happy/language-server` step records `"workspace:*"` in the client's `package.json` and creates the symlink at `packages/vscode/node_modules/@volar-happy/language-server/`. That symlink is what the extension uses at runtime to spawn the server.
 
@@ -361,7 +360,7 @@ Create `packages/vscode/package.json`:
 }
 ```
 
-**`[fix]`** — `@volar-happy/language-server` must be declared as `"workspace:*"`. pnpm uses this to create the symlink at `packages/vscode/node_modules/@volar-happy/language-server/`. The extension code below spawns the server through that symlinked path; the spawn fails with `Cannot find module …` if the dependency isn't declared.
+**`[+]`** — `@volar-happy/language-server` must be declared as `"workspace:*"`. pnpm uses this to create the symlink at `packages/vscode/node_modules/@volar-happy/language-server/`. The extension code below spawns the server through that symlinked path; the spawn fails with `Cannot find module …` if the dependency isn't declared.
 
 Create [`packages/vscode/src/vscode-extension.ts`](./packages/vscode/src/vscode-extension.ts). Notice:
 
@@ -438,7 +437,7 @@ Create [`packages/language-server/src/index.ts`](./packages/language-server/src/
 connection.onInitialize((params) => {
   return server.initialize(
     params,
-    createSimpleProject([happyLanguagePlugin]),    // [fix] register the plugin
+    createSimpleProject([happyLanguagePlugin]),    // [+] register the plugin
     [createHtmlService(), createCssService()],
   );
 });
@@ -446,7 +445,7 @@ connection.onInitialize((params) => {
 // …
 ```
 
-**`[fix]`** — the plugin must be **actually registered** in `createSimpleProject([happyLanguagePlugin])`. The guide's snippet passes an empty array, so opening a `.happy` file produces no logs and no virtual code construction — the LSP server runs but is inert.
+**`[+]`** — the plugin must be **actually registered** in `createSimpleProject([happyLanguagePlugin])`. The guide's snippet passes an empty array, so opening a `.happy` file produces no logs and no virtual code construction — the LSP server runs but is inert.
 
 ### 7. Server configuration — bundling with Vite
 
@@ -497,7 +496,7 @@ export const happyLanguagePlugin = {
 export class HappyVirtualCode implements VirtualCode {
   id = "root";
   languageId = "happy";
-  mappings: CodeMapping[] = [];           // [fix] REQUIRED — guide omits this field
+  mappings: CodeMapping[] = [];           // [+] REQUIRED — guide omits this field
   embeddedCodes: VirtualCode[] = [];
 
   // constructor + update() both call onSnapshotUpdated(),
@@ -506,7 +505,7 @@ export class HappyVirtualCode implements VirtualCode {
 }
 ```
 
-**`[fix]`** — `mappings: CodeMapping[] = []` is **required** by the `VirtualCode` interface. The guide's `Html1Code` snippet declares `id`, `languageId`, `embeddedCodes`, and `snapshot` but omits `mappings`, so `implements VirtualCode` won't compile.
+**`[+]`** — `mappings: CodeMapping[] = []` is **required** by the `VirtualCode` interface. The guide's `Html1Code` snippet declares `id`, `languageId`, `embeddedCodes`, and `snapshot` but omits `mappings`, so `implements VirtualCode` won't compile.
 
 **`[+]`** — `update()` is the **mutation-on-update** pattern from the Volar 2.x `LanguagePlugin` API: Volar reuses the same `VirtualCode` identity across edits, and downstream caches keyed on it stay valid. The guide's older snippet creates a fresh class each edit.
 
