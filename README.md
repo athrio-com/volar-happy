@@ -31,6 +31,8 @@ leaves off and gives you a **runnable starter** with the gaps filled in:
 The project's only language semantics are: _"a file ending in `.happy` exists."_
 Nothing is parsed. The point is the **plumbing**.
 
+**Out of scope** (intentionally): publishing. No `.vscodeignore`, no VSIX packaging, no `pnpm deploy` flow, no marketplace metadata. Happy Path stops at the working F5 loop.
+
 MIT licensed. Fork freely.
 
 ---
@@ -457,7 +459,7 @@ connection.onShutdown(server.shutdown);
 
 ### 7. Server configuration — bundling with Vite
 
-This section is Happy-Path-original: the official guide and `volarjs/starter` use esbuild via a hand-written build script; Happy Path uses Vite library mode for both packages. Same outcome (one CJS bundle per package), fewer moving parts.
+The official guide and `volarjs/starter` use esbuild via a hand-written build script; Happy Path uses Vite library mode for both packages. Same outcome (one CJS bundle per package), fewer moving parts.
 
 **Full files:** [`packages/language-server/vite.config.ts`](./packages/language-server/vite.config.ts), [`packages/vscode/vite.config.ts`](./packages/vscode/vite.config.ts). Both packages share the same shape — entry path, output filename, and the client's extra `"vscode"` external are the only differences. The teaching skeleton:
 
@@ -487,14 +489,7 @@ Two choices worth being explicit about:
 
 **Runtime deps are externalised, not bundled.** rolldown (Vite 8's bundler) cannot rewrite `require()` calls inside UMD wrappers used by packages such as `vscode-html-languageservice`. Bundling them produces `MODULE_NOT_FOUND` at runtime. The `isExternal` helper in each `vite.config.ts` reads each package's own `dependencies` from `package.json` and externalises them; Node resolves them through pnpm-linked `node_modules` instead. Both bundles end up tiny (~3 KB — only your own source).
 
-**VSIX packaging caveat** — `vsce package` does not follow pnpm's symlinks. Before publishing, flatten the tree:
-
-```sh
-pnpm deploy --filter @volar-happy/language-server <staging>
-# then vsce package from <staging>, or copy it into the extension's node_modules/
-```
-
-Not a concern for dev — the Extension Development Host follows symlinks fine.
+This choice has consequences at publish time (the deps must travel inside the VSIX, which means a `pnpm deploy` step before `vsce package`) — but publishing is out of scope for Happy Path, so we don't dwell on it.
 
 ### 8. Defining the language — `languagePlugin.ts`
 
