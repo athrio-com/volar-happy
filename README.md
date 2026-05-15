@@ -198,7 +198,7 @@ Create `tsconfig.base.json` at the repo root:
 }
 ```
 
-**`[+]`** — this base pins `target: ES2021` + `lib: ES2021` for modern emit and lib types, `strict` for real type-checking, `skipLibCheck` so `node_modules` aren't re-checked on every build, `declaration` + `sourceMap` so consumers and debuggers see types and original source positions, `composite` so workspace project references work, and the two `noUnused*` flags so iteration catches dead code early. The guide's base is just `{ "module": "nodenext" }`, which inherits TypeScript's silent defaults (`target: ES5`, `strict: false`, no declarations, no sourcemaps) — fine as a teaching minimum, not what you want for a server you'll iterate on.
+**`[+]`** — this base pins `target/lib: ES2021`, `strict`, `skipLibCheck`, `declaration` + `sourceMap`, `composite`, and `noUnused*` so a server you actually iterate on gets modern emit, real type-checking, fast rebuilds, shippable types and debuggable stacktraces, workspace project references, and dead-code warnings; the guide's `{ "module": "nodenext" }` alone leaves all of these at TypeScript's silent defaults.
 
 In each sub-package, create a `tsconfig.json`:
 
