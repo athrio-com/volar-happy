@@ -404,7 +404,9 @@ export function deactivate(): Thenable<any> | undefined {
 
 ### 6. The server (`packages/language-server`)
 
-`packages/language-server/bin/happy-language-server.js` — the CLI shim. Editor-agnostic: installing the package puts `happy-language-server` on `$PATH`, and any LSP client that launches a server by executing a binary (Neovim, Zed, Helix) can use it. This repo's VS Code extension happens to spawn `dist/happy-server.js` directly over IPC instead, so it doesn't go through this shim — but the shim is VS-Code-compatible, just unused here.
+`packages/language-server/bin/happy-language-server.js` — the CLI entry for clients that spawn LSPs by **executing a binary over stdio** (Neovim, Zed, Helix, etc.). Installing the package puts `happy-language-server` on `$PATH`; the shim then `require()`s the bundled server.
+
+VS Code does **not** go through this shim, on purpose. `vscode-languageclient` with `TransportKind.ipc` uses `child_process.fork()` + Node IPC — message-passing via structured cloning, no per-message JSON-RPC serialisation. That's faster than stdio and avoids depending on the binary being on the user's PATH. Same compiled server, two entry points for two audiences.
 
 ```js
 #!/usr/bin/env node
