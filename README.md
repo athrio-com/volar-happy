@@ -457,37 +457,18 @@ connection.onShutdown(server.shutdown);
 
 ### 7. Server configuration — bundling with Vite
 
-**`[fix]`** the guide implicitly assumes Node 22's built-in TypeScript type-stripping can run the server's `.ts` directly. It can't reliably — angle-bracket casts, enums, and TS-only syntax in some Volar dependencies all trip it. Bundle properly.
+This section is Happy-Path-original: the official guide and `volarjs/starter` use esbuild via a hand-written build script; Happy Path uses Vite library mode for both packages. Same outcome (one CJS bundle per package), fewer moving parts.
 
-Both packages share the same `vite.config.ts` shape (only the entry path and output filename differ). The server's:
+**Full files:** [`packages/language-server/vite.config.ts`](./packages/language-server/vite.config.ts), [`packages/vscode/vite.config.ts`](./packages/vscode/vite.config.ts). Both packages share the same shape — entry path, output filename, and the client's extra `"vscode"` external are the only differences. The teaching skeleton:
 
 ```ts
-import { defineConfig } from "vite";
-import { builtinModules, createRequire } from "node:module";
-import { resolve } from "node:path";
-
-const require = createRequire(import.meta.url);
-const pkg = require("./package.json") as { dependencies?: Record<string, string> };
-const runtimeDeps = Object.keys(pkg.dependencies ?? {});
-
-const nodeBuiltins = [
-  ...builtinModules,
-  ...builtinModules.map((m) => `node:${m}`),
-];
-
-const isExternal = (id: string): boolean => {
-  if (nodeBuiltins.includes(id) || id.startsWith("node:")) return true;
-  return runtimeDeps.some((d) => id === d || id.startsWith(`${d}/`));
-};
-
 export default defineConfig({
   resolve: {
-    conditions: ["node"],            // [fix] pick the Node export branch
+    conditions: ["node"],            // pick the Node export branch
     mainFields: ["main", "module"],
   },
   build: {
     target: "node20",
-    outDir: "dist",
     sourcemap: true,
     minify: false,
     lib: {
@@ -495,27 +476,25 @@ export default defineConfig({
       formats: ["cjs"],              // VS Code's extension host expects CJS
       fileName: () => "happy-server.js",
     },
-    rollupOptions: { external: isExternal },   // [fix] do not bundle runtime deps
+    rollupOptions: { external: isExternal },   // do not bundle runtime deps
   },
 });
 ```
 
-The client's `vite.config.ts` is identical except for the entry, the
-output filename, and adding `"vscode"` to the externals (the editor
-provides that module at runtime).
+Two choices worth being explicit about:
 
-**`[fix: `resolve.conditions: ["node"]`]`** — Vite's default conditions are browser-first. `vscode-languageclient` and `@volar/language-server` both have a `node`-conditioned `exports` map. Without this line, the bundler resolves a browser-shaped module and `TransportKind` ends up `undefined` at runtime — same symptom as the namespace-import issue in section 5, different root cause.
+**`resolve.conditions: ["node"]`** — Vite's default conditions are browser-first. `vscode-languageclient` and `@volar/language-server` both have a `node`-conditioned `exports` map. Without this line, the bundler resolves a browser-shaped module and `TransportKind` ends up `undefined` at runtime.
 
-**`[fix: externalise runtime deps]`** — rolldown (Vite 8's bundler) cannot rewrite `require()` calls inside UMD wrappers used by packages such as `vscode-html-languageservice`. Bundling them produces `MODULE_NOT_FOUND` at runtime. We externalise everything declared in `dependencies` and let Node resolve them through pnpm-linked `node_modules` instead.
+**Runtime deps are externalised, not bundled.** rolldown (Vite 8's bundler) cannot rewrite `require()` calls inside UMD wrappers used by packages such as `vscode-html-languageservice`. Bundling them produces `MODULE_NOT_FOUND` at runtime. The `isExternal` helper in each `vite.config.ts` reads each package's own `dependencies` from `package.json` and externalises them; Node resolves them through pnpm-linked `node_modules` instead. Both bundles end up tiny (~3 KB — only your own source).
 
-Both bundles end up tiny (~3 KB — only your own source).
+**VSIX packaging caveat** — `vsce package` does not follow pnpm's symlinks. Before publishing, flatten the tree:
 
-> **`[+]` VSIX packaging caveat** — `vsce package` does not follow pnpm's symlinks. Before publishing, flatten the tree:
-> ```sh
-> pnpm deploy --filter @volar-happy/language-server <staging>
-> # then vsce package from <staging>, or copy it into the extension's node_modules/
-> ```
-> Not a concern for dev — the Extension Development Host follows symlinks fine.
+```sh
+pnpm deploy --filter @volar-happy/language-server <staging>
+# then vsce package from <staging>, or copy it into the extension's node_modules/
+```
+
+Not a concern for dev — the Extension Development Host follows symlinks fine.
 
 ### 8. Defining the language — `languagePlugin.ts`
 
