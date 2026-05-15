@@ -10,8 +10,8 @@
 > 🥬 **Happy Path** — distilled from **Yegór Karimov**'s real-world work on a
 > literate programming framework. The walls he hit so you don't.
 >
-> ☕📚 If it saved you a weekend, consider supporting our education organisation
-> **Quadrivium**: **[ko-fi.com/quadrivium](https://ko-fi.com/quadrivium)**. Thank you. 🙏
+> 🐌 If it saved you a weekend, consider supporting our education organisation
+> **Quadrivium Academy**: **[ko-fi.com/quadrivium](https://ko-fi.com/quadrivium)**. Thank you. 🙏
 
 This repository is a complement to the official Volar guide,
 [**Your First Volar Language Server**](https://volarjs.dev/guides/first-server/),
@@ -83,7 +83,7 @@ volar-happy/
 │   │   └── vite.config.ts              Library bundle → dist/happy-server.js (CJS, Node target)
 │   └── vscode/                         VS Code extension (the "client")
 │       ├── src/vscode-extension.ts     Spawns the server, attaches LanguageClient
-│       ├── language-configuration.json Brackets, comments, surrounding pairs
+│       ├── language-configuration.json VS Code-only: brackets, comments, auto-closing pairs (no LSP involved)
 │       └── vite.config.ts              Library bundle → dist/vscode-extension.js
 ├── samples/hello.happy                 Demo file to open in the Extension Development Host
 ├── .vscode/
