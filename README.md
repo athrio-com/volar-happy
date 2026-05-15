@@ -198,8 +198,6 @@ Create `tsconfig.base.json` at the repo root:
 }
 ```
 
-**`[+]`** — this base pins `target/lib: ES2021`, `strict`, `skipLibCheck`, `declaration` + `sourceMap`, `composite`, and `noUnused*` so a server you actually iterate on gets modern emit, real type-checking, fast rebuilds, shippable types and debuggable stacktraces, workspace project references, and dead-code warnings; the guide's `{ "module": "nodenext" }` alone leaves all of these at TypeScript's silent defaults.
-
 In each sub-package, create a `tsconfig.json`:
 
 ```json
@@ -250,7 +248,7 @@ Create `.vscode/launch.json`:
 }
 ```
 
-**`[+]`** Create `.vscode/tasks.json` — the guide stops at `launch.json` and leaves "how do you build before launching?" implicit:
+**`[+]`** Create `.vscode/tasks.json` — defines the `build` task F5 runs via `preLaunchTask` before launching the Extension Development Host:
 
 ```json
 {
