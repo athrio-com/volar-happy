@@ -28,7 +28,7 @@
       "port": 6009,
       "restart": true,
       "outFiles": [
-        "${workspaceFolder}/packages/language-server/dist/*.js"
+        "${workspaceFolder}/packages/vscode/dist/server.js"
       ]
     }
   ]

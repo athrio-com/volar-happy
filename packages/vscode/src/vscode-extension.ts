@@ -8,11 +8,8 @@ let client: lsp.BaseLanguageClient;
 export async function activate(context: vscode.ExtensionContext) {
   const serverModule = vscode.Uri.joinPath(
     context.extensionUri,
-    "node_modules",
-    "@volar-happy",
-    "language-server",
     "dist",
-    "happy-server.js",
+    "server.js",
   );
   const serverOptions: lsp.ServerOptions = {
     run: {

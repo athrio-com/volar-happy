@@ -26,5 +26,6 @@ out/
 .cache/
 coverage/
 
-# Packed tarballs
+# Packed tarballs and VSIX
 *.tgz
+*.vsix
