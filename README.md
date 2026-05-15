@@ -76,7 +76,7 @@ You now have a closed feedback loop with Volar. Build a real plugin on top.
 volar-happy/
 ├── packages/
 │   ├── language-server/                LSP server (Node subprocess)
-│   │   ├── bin/happy-language-server.js   CLI shim — works for non-VS-Code clients (Neovim, Zed)
+│   │   ├── bin/happy-language-server.js   CLI shim — editor-agnostic, used by clients that launch a binary (Neovim, Zed, Helix)
 │   │   ├── src/
 │   │   │   ├── index.ts                Wires Volar's connection, registers services
 │   │   │   └── languagePlugin.ts       The plugin — getLanguageId, createVirtualCode, updateVirtualCode
@@ -404,7 +404,7 @@ export function deactivate(): Thenable<any> | undefined {
 
 ### 6. The server (`packages/language-server`)
 
-`packages/language-server/bin/happy-language-server.js` — the CLI shim non-VS-Code clients (Neovim, Zed) invoke:
+`packages/language-server/bin/happy-language-server.js` — the CLI shim. Editor-agnostic: installing the package puts `happy-language-server` on `$PATH`, and any LSP client that launches a server by executing a binary (Neovim, Zed, Helix) can use it. This repo's VS Code extension happens to spawn `dist/happy-server.js` directly over IPC instead, so it doesn't go through this shim — but the shim is VS-Code-compatible, just unused here.
 
 ```js
 #!/usr/bin/env node
