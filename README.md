@@ -127,7 +127,7 @@ project by reading only this README. Snippets are adapted to
 `.happy` / `happy` / `Happy`. Inline annotations mark where Happy Path
 diverges from the guide and why:
 
-- **`[fix]`** — Happy Path does it differently because the guide is wrong, incomplete, or breaks at runtime.
+- **`[fix]`** — Happy Path does it differently because the guide is incomplete or breaks at runtime.
 - **`[+]`** — Happy Path adds something the guide omits.
 
 ### 1. Prerequisites
@@ -200,7 +200,7 @@ Finally, at the root:
 pnpm install
 ```
 
-This materialises the workspace symlinks (notably `packages/vscode/node_modules/@volar-happy/language-server` → `../../../language-server`), which the extension relies on at runtime to spawn the server.
+This materialises the workspace symlinks, which the extension relies on at runtime to spawn the server.
 
 ### 3. Installing and configuring TypeScript
 
@@ -290,14 +290,14 @@ Each package's own `tsconfig.json`:
       "type": "shell",
       "command": "pnpm -r build",
       "group": { "kind": "build", "isDefault": true },
-      "presentation": { "reveal": "silent", "panel": "shared" },
+      "presentation": { "reveal": "always", "panel": "shared" },
       "problemMatcher": []
     }
   ]
 }
 ```
 
-**`[fix]`** — `preLaunchTask: "build"` silently does nothing if the label doesn't match a task in `tasks.json` **exactly**. Case-sensitive, no error message.
+**`[+]`** — `reveal: "always"` opens the terminal panel on every F5 so build output is visible. With `reveal: "silent"` (the more common default in starter snippets) you can't see whether Vite ran, what it produced, or whether it failed — and `problemMatcher: []` means VS Code won't pop a dialog either. For a starter where the whole point is making the pipeline visible, `always` is the safer choice.
 
 ### 5. The client (`packages/vscode`)
 

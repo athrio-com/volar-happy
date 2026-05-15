@@ -6,15 +6,7 @@
       "type": "shell",
       "command": "pnpm -r build",
       "group": { "kind": "build", "isDefault": true },
-      "presentation": { "reveal": "silent", "panel": "shared" },
-      "problemMatcher": []
-    },
-    {
-      "label": "watch",
-      "type": "shell",
-      "command": "pnpm -r --parallel watch",
-      "isBackground": true,
-      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "presentation": { "reveal": "always", "panel": "shared" },
       "problemMatcher": []
     }
   ]
