@@ -5,33 +5,28 @@
 >
 > _Last verified: Volar `2.4.28`, Node 24 LTS, pnpm 11, vscode-languageclient 9 — 2026-05-15._
 
----
-
-> 🥬 **Happy Path** — distilled from **Yegór Karimov**'s real-world work on a
-> literate programming framework. The walls he hit so you don't.
+> 🥬 **Happy Path** — distilled from real-world work.
 >
 > 🐌 If it saved you a weekend, consider supporting our education organisation
 > **Quadrivium Academy**: **[ko-fi.com/quadrivium](https://ko-fi.com/quadrivium)**. Thank you. 🙏
 
 This repository is a complement to the official Volar guide,
 [**Your First Volar Language Server**](https://volarjs.dev/guides/first-server/),
-which is marked _"work in progress"_ at the top and stops mid-implementation
+which is marked _"work in progress"_ and stops mid-implementation
 in the `languagePlugin.ts` section. The Happy Path picks up where that guide
 leaves off and gives you a **runnable starter** with the gaps filled in:
 
-- pnpm 11 workspace, explicit and current (pinned via `packageManager`, with `pnpm-workspace.yaml` and the `allowBuilds` block pnpm 11 introduced)
-- Vite library mode for both packages (replaces the `bun build` / `esbuild` script the guide elides)
-- A complete `HappyVirtualCode` class — including the `mappings` field the guide's `Html1Code` snippet omits, which is required by `VirtualCode`
-- The plugin actually registered in `createSimpleProject([happyLanguagePlugin])` (the guide's example passes an empty array)
+- pnpm 11 workspace
+- Vite library mode for both packages
+- A complete `HappyVirtualCode` class
+- The plugin actually registered in `createSimpleProject([happyLanguagePlugin])`
 - `.vscode/launch.json` + `.vscode/tasks.json` checked in, so <kbd>F5</kbd> just works
-- Diagnostic `console.log` at every plugin entry point, so you can _see_ the
-  Volar lifecycle (`getLanguageId` → `createVirtualCode` → `updateVirtualCode`)
-  before you write any real parser code
+- Diagnostic `console.log` at every plugin entry point
 
 The project's only language semantics are: _"a file ending in `.happy` exists."_
 Nothing is parsed. The point is the **plumbing**.
 
-**Out of scope** (intentionally): publishing. No `.vscodeignore`, no VSIX packaging, no `pnpm deploy` flow, no marketplace metadata. Happy Path stops at the working F5 loop.
+**Out of scope**: publishing.
 
 MIT licensed. Fork freely.
 
@@ -64,7 +59,7 @@ You should see:
 [Happy]   -> constructing HappyVirtualCode
 [Happy]   HappyVirtualCode constructor: length = …
 [Happy]   onSnapshotUpdated: text length = …
-[Happy]   first 200 chars: "…"
+[Happy]   first 1000 chars: "…"
 ```
 
 Type into the file. Every keystroke produces an `updateVirtualCode` entry.
@@ -96,31 +91,7 @@ volar-happy/
 └── tsconfig.json                       Root — for editor IntelliSense across the workspace
 ```
 
-**Three processes:**
-
-1. **VS Code** — the editor.
-2. **The extension** (`packages/vscode`) — lives _inside_ VS Code's extension host.
-3. **The language server** (`packages/language-server`) — a separate Node subprocess that the extension spawns on first `.happy` open.
-
-**Two boundaries:**
-
-- VS Code ↔ extension: in-process calls via the VS Code extension API.
-- Extension ↔ server: LSP messages (JSON-RPC) over IPC.
-
-All Volar-related code — the plugin, your future parser, your future services — runs in the **server**. The extension is a thin spawner.
-
-The flow when you open a `.happy` file:
-
-1. VS Code activates the extension on `onLanguage:happy`.
-2. The extension spawns the server — `node dist/happy-server.js`, IPC transport.
-3. When you open a `.happy` file, Volar wraps the text in a snapshot and calls your plugin:
-   - `getLanguageId(uri)` → `'happy'`
-   - `createVirtualCode(uri, 'happy', snapshot)` ← **your parser runs here**
-4. Volar caches the returned `VirtualCode`. After that, it only re-enters your code on document changes (`updateVirtualCode`) or when an editor feature is requested (hover, completion, …).
-
----
-
-## Step-by-step (full mirror of the official guide)
+## 📖 Step-by-step (full mirror of the official guide)
 
 Each section below mirrors a section of the
 [**official guide**](https://volarjs.dev/guides/first-server/) — same
@@ -129,7 +100,7 @@ project by reading only this README. Snippets are adapted to
 `.happy` / `happy` / `Happy`. Inline annotations mark where Happy Path
 diverges from the guide and why:
 
-**`[+]`** marks a point where Happy Path diverges from the guide — either by adding what the guide skips or by correcting something that doesn't work as written. The prose around each `[+]` tells you which.
+**`[+]`** marks a point where Happy Path diverges from the guide — either by adding what the guide skips or by correcting something that doesn't work as written.
 
 ### 1. Prerequisites
 
@@ -449,14 +420,13 @@ connection.onInitialize((params) => {
 
 ### 7. Server configuration — bundling with Vite
 
-The official guide and `volarjs/starter` use esbuild via a hand-written build script; Happy Path uses Vite library mode for both packages. Same outcome (one CJS bundle per package), fewer moving parts.
+**`[+]`** The official guide and `volarjs/starter` use esbuild via a hand-written build script; Happy Path uses Vite library mode for both packages. Same outcome (one CJS bundle per package), fewer moving parts.
 
-Create [`packages/language-server/vite.config.ts`](./packages/language-server/vite.config.ts) and [`packages/vscode/vite.config.ts`](./packages/vscode/vite.config.ts). They share the same shape — only the entry path, output filename, and the client's extra `"vscode"` external differ. Notice:
+Create [`packages/language-server/vite.config.ts`](./packages/language-server/vite.config.ts) and [`packages/vscode/vite.config.ts`](./packages/vscode/vite.config.ts). They share the similar shape — only the entry path, output filename, and the client's extra `"vscode"` external differ. Notice:
 
 ```ts
 // packages/language-server/vite.config.ts — excerpt
 // …
-// const isExternal = (id) => true if id is in package.json `dependencies`
 
 export default defineConfig({
   resolve: {
@@ -490,13 +460,13 @@ Create [`packages/language-server/src/languagePlugin.ts`](./packages/language-se
 export const happyLanguagePlugin = {
   getLanguageId(uri)                                { /* … */ },
   createVirtualCode(uri, languageId, snapshot)      { /* … */ },
-  updateVirtualCode(uri, code: HappyVirtualCode, s) { code.update(s); return code; },  // [+] mutate
+  updateVirtualCode(uri, code: HappyVirtualCode, s) { code.update(s); return code; },  // [+]
 } satisfies LanguagePlugin<URI>;
 
 export class HappyVirtualCode implements VirtualCode {
   id = "root";
   languageId = "happy";
-  mappings: CodeMapping[] = [];           // [+] REQUIRED — guide omits this field
+  mappings: CodeMapping[] = [];           // [+]
   embeddedCodes: VirtualCode[] = [];
 
   // constructor + update() both call onSnapshotUpdated(),
@@ -524,24 +494,7 @@ That's the entire Volar boundary. **`(source: string) → AST` with positioned n
 
 ---
 
-## Where to go from here
-
-- **Parse something.** Replace the `console.log` in `onSnapshotUpdated`
-  with a real parser. Make every AST node carry `{ start: { offset }, end: { offset } }`.
-- **Emit embedded codes.** Each "code section" in your language becomes a
-  `VirtualCode` with `languageId: 'typescript'` (or whatever it is) and a
-  mapping that translates positions between the section's local coords and
-  the source document.
-- **Upgrade to a TypeScript project.** Switch
-  `createSimpleProject([…])` → `createTypeScriptProject(ts, msgs, () => ({ languagePlugins: […] }))`
-  so embedded TS gets real type-checking via tsserver. Add
-  `volar-service-typescript` to the services list. Add a `typescript`
-  field to your `LanguagePlugin` with `extraFileExtensions` and
-  `getExtraServiceScripts`.
-- **Custom diagnostics.** Register a service alongside the others — see
-  `volarjs/starter`'s `index.ts` "only one `<style>` tag" example as a template.
-
-### Cross-editor — the `bin` shim
+## Cross-editor — the `bin` shim
 
 The same `dist/happy-server.js` runs under any LSP-aware editor. VS Code uses `TransportKind.ipc` (in-tree, faster); Neovim, Zed, Helix and friends launch the server as a binary on `$PATH` — `packages/language-server/bin/happy-language-server.js` (wired via the `"bin"` field) is the entry point for that path. Same compiled server, two entry points.
 
